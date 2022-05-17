@@ -1,0 +1,7 @@
+version: '3'
+services:
+  attacker:
+    image: securityhubconnector:dev
+    ports:
+      - "443:443"
+      - "5000:5000"

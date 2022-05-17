@@ -1,0 +1,758 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Shared resources required by all Amazon EKS Quick Start stacks in this
+  account. (qs-1r0qgtn7j)
+Mappings:
+  Config:
+    Prefix:
+      Value: eks-quickstart
+    ParameterPrefix:
+      Value: /quickstart/amazon-eks
+Resources:
+  CopyZipsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub
+        - ${Prefix}-CopyZips
+        - Prefix: !FindInMap
+            - Config
+            - Prefix
+            - Value
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: lambda-zips-s3-read
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub 'arn:${AWS::Partition}:s3:::*/*'
+  ResourceReaderRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub
+        - ${Prefix}-ResourceReader
+        - Prefix: !FindInMap
+            - Config
+            - Prefix
+            - Value
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/ReadOnlyAccess'
+  CreateVpcRoleRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub
+        - ${Prefix}-CreateVpcRole
+        - Prefix: !FindInMap
+            - Config
+            - Prefix
+            - Value
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: create-role
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: iam:CreateRole
+                Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/CloudFormation-Kubernetes-VPC'
+              - Effect: Allow
+                Action: iam:AttachRolePolicy
+                Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/CloudFormation-Kubernetes-VPC'
+                Condition:
+                  ArnEquals:
+                    iam:PolicyARN:
+                      - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaENIManagementAccess'
+                      - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+  DeleteBucketContentsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub
+        - ${Prefix}-DeleteBucketContents
+        - Prefix: !FindInMap
+            - Config
+            - Prefix
+            - Value
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+  ControlPlaneRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub
+        - ${Prefix}-ControlPlane
+        - Prefix: !FindInMap
+            - Config
+            - Prefix
+            - Value
+      Policies:
+        - PolicyName: ec2-describe-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeAccountAttributes
+                  - ec2:DescribeAddresses
+                  - ec2:DescribeInternetGateways
+                Resource: '*'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: eks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonEKSClusterPolicy'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonEKSServicePolicy'
+  CleanupLoadBalancersRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - EIAMPolicyWildcardResource
+          ignore_reasons:
+            EIAMPolicyWildcardResource: "the roles in this template are re-used across\
+              \ more than 1 eks qs deployment and as such resource names that will\
+              \ only be created in the future are unknown\n"
+    Properties:
+      RoleName: !Sub
+        - ${Prefix}-CleanupLoadBalancers
+        - Prefix: !FindInMap
+            - Config
+            - Prefix
+            - Value
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+        Version: '2012-10-17'
+      Path: /
+      Policies:
+        - PolicyName: LambdaRole
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource: !Sub 'arn:${AWS::Partition}:logs:*:*:*'
+              - Action:
+                  - elasticloadbalancing:DescribeLoadBalancers
+                  - elasticloadbalancing:DescribeTags
+                  - elasticloadbalancing:DeleteLoadBalancer
+                  - ec2:DescribeTags
+                  - ec2:DeleteSecurityGroup
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:DeleteNetworkInterface
+                  - ec2:DetachNetworkInterface
+                  - ec2:DescribeSecurityGroups
+                  - ec2:RevokeSecurityGroupEgress
+                  - ec2:RevokeSecurityGroupIngress
+                Effect: Allow
+                Resource: '*'
+  CleanupSecurityGroupDependenciesRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - EIAMPolicyWildcardResource
+          ignore_reasons:
+            EIAMPolicyWildcardResource: "the roles in this template are re-used across\
+              \ more than 1 eks qs deployment and as such resource names that will\
+              \ only be created in the future are unknown\n"
+    Properties:
+      RoleName: !Sub
+        - ${Prefix}-CleanupSecurityGroupDependencies
+        - Prefix: !FindInMap
+            - Config
+            - Prefix
+            - Value
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+        Version: '2012-10-17'
+      Path: /
+      Policies:
+        - PolicyName: LambdaRole
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource: !Sub 'arn:${AWS::Partition}:logs:*:*:*'
+              - Action:
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:DescribeSecurityGroups
+                  - ec2:RevokeSecurityGroupEgress
+                  - ec2:RevokeSecurityGroupIngress
+                  - ec2:DeleteNetworkInterface
+                  - ec2:DetachNetworkInterface
+                Effect: Allow
+                Resource: '*'
+  CleanupLambdasRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - EIAMPolicyWildcardResource
+          ignore_reasons:
+            EIAMPolicyWildcardResource: "the roles in this template are re-used across\
+              \ more than 1 eks qs deployment and as such resource names that will\
+              \ only be created in the future are unknown\n"
+    Properties:
+      RoleName: !Sub
+        - ${Prefix}-CleanupLambdas
+        - Prefix: !FindInMap
+            - Config
+            - Prefix
+            - Value
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+        Version: '2012-10-17'
+      Path: /
+      Policies:
+        - PolicyName: LambdaRole
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource: !Sub 'arn:${AWS::Partition}:logs:*:*:*'
+              - Action:
+                  - lambda:ListFunctions
+                  - lambda:UpdateFunctionConfiguration
+                  - lambda:DeleteFunction
+                Effect: Allow
+                Resource: '*'
+  GetCallerArnRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - EIAMPolicyWildcardResource
+          ignore_reasons:
+            EIAMPolicyWildcardResource: "the roles in this template are re-used across\
+              \ more than 1 eks qs deployment and as such resource names that will\
+              \ only be created in the future are unknown\n"
+    Properties:
+      RoleName: !Sub
+        - ${Prefix}-GetCallerArn
+        - Prefix: !FindInMap
+            - Config
+            - Prefix
+            - Value
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+        Version: '2012-10-17'
+      Path: /
+      Policies:
+        - PolicyName: LambdaRole
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource: !Sub 'arn:${AWS::Partition}:logs:*:*:*'
+              - Action:
+                  - cloudformation:DescribeStacks
+                  - cloudtrail:LookupEvents
+                Effect: Allow
+                Resource: '*'
+  RegisterTypeRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - EIAMPolicyWildcardResource
+          ignore_reasons:
+            EIAMPolicyWildcardResource: "the roles in this template are re-used across\
+              \ more than 1 eks qs deployment and as such resource names that will\
+              \ only be created in the future are unknown\n"
+    Properties:
+      RoleName: !Sub
+        - ${Prefix}-RegisterType
+        - Prefix: !FindInMap
+            - Config
+            - Prefix
+            - Value
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: ResourceTypePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudformation:DescribeTypeRegistration
+                  - cloudformation:DescribeType
+                  - cloudformation:RegisterType
+                  - cloudformation:SetTypeDefaultVersion
+                  - cloudformation:ListTypeVersions
+                  - cloudformation:DeregisterType
+                  - iam:PassRole
+                  - iam:CreateRole
+                  - iam:CreatePolicy
+                  - iam:ListPolicyVersions
+                  - iam:DeletePolicyVersion
+                  - iam:CreatePolicyVersion
+                  - iam:AttachRolePolicy
+                  - ssm:GetParameter
+                  - ssm:PutParameter
+                  - sts:GetCallerIdentity
+                  - s3:GetObject
+                Resource: '*'
+  RegisterCustomResourceRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - EIAMPolicyWildcardResource
+          ignore_reasons:
+            EIAMPolicyWildcardResource: "the roles in this template are re-used across\
+              \ more than 1 eks qs deployment and as such resource names that will\
+              \ only be created in the future are unknown\n"
+    Properties:
+      RoleName: !Sub
+        - ${Prefix}-RegisterCustomResource
+        - Prefix: !FindInMap
+            - Config
+            - Prefix
+            - Value
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: ResourceTypePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:DeleteFunctionCodeSigningConfig
+                  - lambda:DeleteFunction
+                  - lambda:GetFunctionConcurrency
+                  - lambda:ListVersionsByFunction
+                  - lambda:GetPolicy
+                  - lambda:ListAliases
+                  - lambda:GetFunctionEventInvokeConfig
+                  - lambda:CreateEventSourceMapping
+                  - lambda:PutProvisionedConcurrencyConfig
+                  - lambda:ListFunctionsByCodeSigningConfig
+                  - lambda:PublishVersion
+                  - lambda:AddLayerVersionPermission
+                  - lambda:GetAlias
+                  - lambda:PutFunctionEventInvokeConfig
+                  - lambda:ListFunctions
+                  - lambda:UpdateFunctionEventInvokeConfig
+                  - lambda:CreateAlias
+                  - lambda:DeleteAlias
+                  - lambda:DeleteFunctionEventInvokeConfig
+                  - lambda:InvokeAsync
+                  - lambda:UpdateFunctionCode
+                  - lambda:DeleteLayerVersion
+                  - lambda:CreateCodeSigningConfig
+                  - lambda:GetFunctionCodeSigningConfig
+                  - lambda:DeleteEventSourceMapping
+                  - lambda:EnableReplication
+                  - lambda:AddPermission
+                  - lambda:RemovePermission
+                  - lambda:DisableReplication
+                  - lambda:InvokeFunction
+                  - lambda:GetCodeSigningConfig
+                  - lambda:ListCodeSigningConfigs
+                  - lambda:GetFunctionConfiguration
+                  - lambda:GetFunction
+                  - lambda:TagResource
+                  - lambda:UpdateFunctionCodeSigningConfig
+                  - lambda:GetAccountSettings
+                  - lambda:RemoveLayerVersionPermission
+                  - lambda:DeleteFunctionConcurrency
+                  - lambda:UpdateEventSourceMapping
+                  - lambda:ListTags
+                  - lambda:ListFunctionEventInvokeConfigs
+                  - lambda:CreateFunction
+                  - lambda:UpdateAlias
+                  - lambda:DeleteCodeSigningConfig
+                  - lambda:PublishLayerVersion
+                  - lambda:UntagResource
+                  - lambda:ListProvisionedConcurrencyConfigs
+                  - lambda:UpdateCodeSigningConfig
+                  - lambda:GetLayerVersionPolicy
+                  - lambda:GetProvisionedConcurrencyConfig
+                  - lambda:ListLayerVersions
+                  - lambda:UpdateFunctionConfiguration
+                  - lambda:GetLayerVersion
+                  - lambda:GetEventSourceMapping
+                  - lambda:ListEventSourceMappings
+                  - lambda:PutFunctionConcurrency
+                  - lambda:DeleteProvisionedConcurrencyConfig
+                  - lambda:ListLayers
+                  - lambda:PutFunctionCodeSigningConfig
+                  - iam:PassRole
+                  - iam:CreateRole
+                  - iam:CreatePolicy
+                  - iam:ListPolicyVersions
+                  - iam:DeletePolicyVersion
+                  - iam:CreatePolicyVersion
+                  - iam:AttachRolePolicy
+                  - ssm:GetParameter
+                  - ssm:PutParameter
+                  - sts:GetCallerIdentity
+                Resource: '*'
+  NodeSGRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - EIAMPolicyWildcardResource
+          ignore_reasons:
+            EIAMPolicyWildcardResource: "the roles in this template are re-used across\
+              \ more than 1 eks qs deployment and as such resource names that will\
+              \ only be created in the future are unknown\n"
+    Properties:
+      RoleName: !Sub
+        - ${Prefix}-NodeSG
+        - Prefix: !FindInMap
+            - Config
+            - Prefix
+            - Value
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: lambda-copier
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - eks:DescribeNodeGroup
+                Resource: '*'
+  FargateExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub
+        - ${Prefix}-FargateExecution
+        - Prefix: !FindInMap
+            - Config
+            - Prefix
+            - Value
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: eks-fargate-pods.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonEKSFargatePodExecutionRolePolicy'
+  FargateProfileRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - EIAMPolicyWildcardResource
+          ignore_reasons:
+            EIAMPolicyWildcardResource: "the roles in this template are re-used across\
+              \ more than 1 eks qs deployment and as such resource names that will\
+              \ only be created in the future are unknown\n"
+    Properties:
+      RoleName: !Sub
+        - ${Prefix}-FargateProfile
+        - Prefix: !FindInMap
+            - Config
+            - Prefix
+            - Value
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: ResourceTypePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - eks:DescribeFargateProfile
+                  - eks:CreateFargateProfile
+                  - eks:DeleteFargateProfile
+                  - iam:PassRole
+                  - iam:GetRole
+                  - iam:CreateServiceLinkedRole
+                  - ec2:DescribeSubnets
+                Resource: '*'
+  ParameterResolverRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub
+        - ${Prefix}-ParameterResolver
+        - Prefix: !FindInMap
+            - Config
+            - Prefix
+            - Value
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: param-resolver
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParametersByPath
+                  - ssm:GetParameters
+                  - ssm:GetParameterHistory
+                  - ssm:GetParameter
+                Resource: !Sub
+                  - arn:${AWS::Partition}:ssm:*:${AWS::AccountId}:parameter${ParameterPrefix}/*
+                  - ParameterPrefix: !FindInMap
+                      - Config
+                      - ParameterPrefix
+                      - Value
+  UnmanagedNodeInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Ref 'UnmanagedNodeInstanceRole'
+      Path: /
+      Roles:
+        - !Ref 'UnmanagedNodeInstanceRole'
+  ManagedNodeInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Ref 'ManagedNodeInstanceRole'
+      Path: /
+      Roles:
+        - !Ref 'ManagedNodeInstanceRole'
+  UnmanagedNodeInstanceRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - EIAMPolicyWildcardResource
+          ignore_reasons:
+            EIAMPolicyWildcardResource: "the roles in this template are re-used across\
+              \ more than 1 eks qs deployment and as such resource names that will\
+              \ only be created in the future are unknown\n"
+    Properties:
+      RoleName: !Sub
+        - ${Prefix}-UnmanagedNodeInstance
+        - Prefix: !FindInMap
+            - Config
+            - Prefix
+            - Value
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: !Sub 'ec2.${AWS::URLSuffix}'
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: cfn-signal
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudformation:SignalResource
+                Resource: '*'
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonEKSWorkerNodePolicy'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonEKS_CNI_Policy'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonElasticFileSystemReadOnlyAccess'
+  ManagedNodeInstanceRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - EIAMPolicyWildcardResource
+          ignore_reasons:
+            EIAMPolicyWildcardResource: "the roles in this template are re-used across\
+              \ more than 1 eks qs deployment and as such resource names that will\
+              \ only be created in the future are unknown\n"
+    Properties:
+      RoleName: !Sub
+        - ${Prefix}-ManagedNodeInstance
+        - Prefix: !FindInMap
+            - Config
+            - Prefix
+            - Value
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: !Sub 'ec2.${AWS::URLSuffix}'
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: cfn-signal
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudformation:SignalResource
+                Resource: '*'
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonEKSWorkerNodePolicy'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonEKS_CNI_Policy'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonElasticFileSystemReadOnlyAccess'
+  CloudformationVPCRoleCreationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub
+        - ${Prefix}-CloudformationVPCRoleCreation
+        - Prefix: !FindInMap
+            - Config
+            - Prefix
+            - Value
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: create-role
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - iam:CreateRole
+                Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/CloudFormation-Kubernetes-VPC'
+        - PolicyName: attach-role-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - iam:AttachRolePolicy
+                Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/CloudFormation-Kubernetes-VPC'
+                Condition:
+                  ArnEquals:
+                    iam:PolicyARN:
+                      - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+                      - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaENIManagementAccess'

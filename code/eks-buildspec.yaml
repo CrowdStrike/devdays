@@ -1,0 +1,20 @@
+version: 0.2
+
+phases:
+  pre_build:
+    on-failure: ABORT
+    commands:
+      - echo Creating kubeconfig for Amazon EKS...
+      - aws eks --region $AWS_DEFAULT_REGION update-kubeconfig --name $EKS_CLUSTER_NAME 
+      - REPOSITORY_URI=${REPO_ECR}
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_TAG=${COMMIT_HASH:=latest}
+      - echo "Update Image tag in kube-manifest..."
+      - sed -i 's@CONTAINER_IMAGE@'"$REPOSITORY_URI:$IMAGE_TAG"'@' ./app/victim/deployment.yaml
+      - cat ./app/victim/deployment.yaml
+  build:
+    on-failure: ABORT
+    commands:
+      - echo Deploy started on `date`
+      - echo Deploying to the EKS cluster...
+      - kubectl apply -f ./app/victim/deployment.yaml

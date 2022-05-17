@@ -1,0 +1,292 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Deploys the aws load balancer controller to an existing kubernetes cluster (qs-1qnl6p00n)"
+Metadata:
+  QSLint:
+    Exclusions: [W9002, W9003, W9004, W9006]
+Parameters:
+  PermissionsBoundary:
+    Type: String
+    Default: 'BoundaryForAdministratorAccess'
+  OIDCIssuerURLWithoutProtocol:
+    Type: String
+  EksClusterName:
+    Type: String
+  VpcId:
+    Type: String
+  ControllerCPULimit:
+    Type: String
+    Default: "100m"
+  ControllerMemoryLimit:
+    Type: String
+    Default: "80Mi"
+  ControllerHostNetwork:
+    Type: String
+    AllowedValues: [ Enabled, Disabled ]
+    Default: Disabled
+Conditions:
+  HostNetworkEnabled: !Equals [ !Ref ControllerHostNetwork, Enabled ]
+  PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
+
+Mappings:
+  RegionMap:
+    me-south-1:
+      lbrepo: 558608220178.dkr.ecr.me-south-1.amazonaws.com/amazon/aws-load-balancer-controller
+    eu-south-1:
+      lbrepo: 590381155156.dkr.ecr.eu-south-1.amazonaws.com/amazon/aws-load-balancer-controller
+    ap-northeast-1:
+      lbrepo: 602401143452.dkr.ecr.ap-northeast-1.amazonaws.com/amazon/aws-load-balancer-controller
+    ap-northeast-2:
+      lbrepo: 602401143452.dkr.ecr.ap-northeast-2.amazonaws.com/amazon/aws-load-balancer-controller
+    ap-northeast-3:
+      lbrepo: 602401143452.dkr.ecr.ap-northeast-3.amazonaws.com/amazon/aws-load-balancer-controller
+    ap-south-1:
+      lbrepo: 602401143452.dkr.ecr.ap-south-1.amazonaws.com/amazon/aws-load-balancer-controller
+    ap-southeast-1:
+      lbrepo: 602401143452.dkr.ecr.ap-southeast-1.amazonaws.com/amazon/aws-load-balancer-controller
+    ap-southeast-2:
+      lbrepo: 602401143452.dkr.ecr.ap-southeast-2.amazonaws.com/amazon/aws-load-balancer-controller
+    ca-central-1:
+      lbrepo: 602401143452.dkr.ecr.ca-central-1.amazonaws.com/amazon/aws-load-balancer-controller
+    eu-central-1:
+      lbrepo: 602401143452.dkr.ecr.eu-central-1.amazonaws.com/amazon/aws-load-balancer-controller
+    eu-north-1:
+      lbrepo: 602401143452.dkr.ecr.eu-north-1.amazonaws.com/amazon/aws-load-balancer-controller
+    eu-west-1:
+      lbrepo: 602401143452.dkr.ecr.eu-west-1.amazonaws.com/amazon/aws-load-balancer-controller
+    eu-west-2:
+      lbrepo: 602401143452.dkr.ecr.eu-west-2.amazonaws.com/amazon/aws-load-balancer-controller
+    eu-west-3:
+      lbrepo: 602401143452.dkr.ecr.eu-west-3.amazonaws.com/amazon/aws-load-balancer-controller
+    sa-east-1:
+      lbrepo: 602401143452.dkr.ecr.sa-east-1.amazonaws.com/amazon/aws-load-balancer-controller
+    us-east-1:
+      lbrepo: 602401143452.dkr.ecr.us-east-1.amazonaws.com/amazon/aws-load-balancer-controller
+    us-east-2:
+      lbrepo: 602401143452.dkr.ecr.us-east-2.amazonaws.com/amazon/aws-load-balancer-controller
+    us-west-1:
+      lbrepo: 602401143452.dkr.ecr.us-west-1.amazonaws.com/amazon/aws-load-balancer-controller
+    us-west-2:
+      lbrepo: 602401143452.dkr.ecr.us-west-2.amazonaws.com/amazon/aws-load-balancer-controller
+    ap-east-1:  
+      lbrepo: 800184023465.dkr.ecr.ap-east-1.amazonaws.com/amazon/aws-load-balancer-controller
+    af-south-1:
+      lbrepo: 877085696533.dkr.ecr.af-south-1.amazonaws.com/amazon/aws-load-balancer-controller
+    cn-north-1:
+      lbrepo: 918309763551.dkr.ecr.cn-north-1.amazonaws.com.cn/amazon/aws-load-balancer-controller
+    cn-northwest-1:
+      lbrepo: 961992271922.dkr.ecr.cn-northwest-1.amazonaws.com.cn/amazon/aws-load-balancer-controller
+    us-gov-west-1:
+      lbrepo: 013241004608.dkr.ecr.us-gov-west-1.amazonaws.com/amazon/aws-load-balancer-controller
+    us-gov-east-1:
+      lbrepo: 151742754352.dkr.ecr.us-gov-east-1.amazonaws.com/amazon/aws-load-balancer-controller
+Resources:
+  LoadBalancerControllerIAMRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks: [EIAMPolicyWildcardResource]
+          ignore_reasons:
+            EIAMPolicyWildcardResource: "resources are created dynamically by the k8s cloud controller, and aren't known at the time of policy creation"
+    Properties:
+      PermissionsBoundary:
+        Fn::If:
+          - PermissionsBoundary
+          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+          - Ref: AWS::NoValue
+      AssumeRolePolicyDocument: !Sub |
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Federated": "arn:${AWS::Partition}:iam::${AWS::AccountId}:oidc-provider/${OIDCIssuerURLWithoutProtocol}"
+              },
+              "Action": "sts:AssumeRoleWithWebIdentity",
+              "Condition": {
+                "StringEquals": {
+                  "${OIDCIssuerURLWithoutProtocol}:sub": "system:serviceaccount:kube-system:aws-load-balancer-controller"
+                }
+              }
+            }
+          ]
+        }
+      Policies:
+      - PolicyName: load-balancer-controller-policy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - 'iam:CreateServiceLinkedRole'
+                - 'ec2:DescribeAccountAttributes'
+                - 'ec2:DescribeAddresses'
+                - 'ec2:DescribeAvailabilityZones'
+                - 'ec2:DescribeInternetGateways'
+                - 'ec2:DescribeVpcs'
+                - 'ec2:DescribeSubnets'
+                - 'ec2:DescribeSecurityGroups'
+                - 'ec2:DescribeInstances'
+                - 'ec2:DescribeNetworkInterfaces'
+                - 'ec2:DescribeTags'
+                - 'ec2:GetCoipPoolUsage'
+                - 'ec2:DescribeCoipPools'
+                - 'elasticloadbalancing:DescribeLoadBalancers'
+                - 'elasticloadbalancing:DescribeLoadBalancerAttributes'
+                - 'elasticloadbalancing:DescribeListeners'
+                - 'elasticloadbalancing:DescribeListenerCertificates'
+                - 'elasticloadbalancing:DescribeSSLPolicies'
+                - 'elasticloadbalancing:DescribeRules'
+                - 'elasticloadbalancing:DescribeTargetGroups'
+                - 'elasticloadbalancing:DescribeTargetGroupAttributes'
+                - 'elasticloadbalancing:DescribeTargetHealth'
+                - 'elasticloadbalancing:DescribeTags'
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - 'cognito-idp:DescribeUserPoolClient'
+                - 'acm:ListCertificates'
+                - 'acm:DescribeCertificate'
+                - 'iam:ListServerCertificates'
+                - 'iam:GetServerCertificate'
+                - 'waf-regional:GetWebACL'
+                - 'waf-regional:GetWebACLForResource'
+                - 'waf-regional:AssociateWebACL'
+                - 'waf-regional:DisassociateWebACL'
+                - 'wafv2:GetWebACL'
+                - 'wafv2:GetWebACLForResource'
+                - 'wafv2:AssociateWebACL'
+                - 'wafv2:DisassociateWebACL'
+                - 'shield:GetSubscriptionState'
+                - 'shield:DescribeProtection'
+                - 'shield:CreateProtection'
+                - 'shield:DeleteProtection'
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - 'ec2:AuthorizeSecurityGroupIngress'
+                - 'ec2:RevokeSecurityGroupIngress'
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - 'ec2:CreateSecurityGroup'
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - 'ec2:CreateTags'
+              Resource: !Sub 'arn:${AWS::Partition}:ec2:*:*:security-group/*'
+              Condition:
+                StringEquals:
+                  'ec2:CreateAction': CreateSecurityGroup
+                'Null':
+                  'aws:RequestTag/elbv2.k8s.aws/cluster': 'false'
+            - Effect: Allow
+              Action:
+                - 'ec2:CreateTags'
+                - 'ec2:DeleteTags'
+              Resource: !Sub 'arn:${AWS::Partition}:ec2:*:*:security-group/*'
+              Condition:
+                'Null':
+                  'aws:RequestTag/elbv2.k8s.aws/cluster': 'true'
+                  'aws:ResourceTag/elbv2.k8s.aws/cluster': 'false'
+            - Effect: Allow
+              Action:
+                - 'ec2:AuthorizeSecurityGroupIngress'
+                - 'ec2:RevokeSecurityGroupIngress'
+                - 'ec2:DeleteSecurityGroup'
+              Resource: '*'
+              Condition:
+                'Null':
+                  'aws:ResourceTag/elbv2.k8s.aws/cluster': 'false'
+            - Effect: Allow
+              Action:
+                - 'elasticloadbalancing:CreateLoadBalancer'
+                - 'elasticloadbalancing:CreateTargetGroup'
+              Resource: '*'
+              Condition:
+                'Null':
+                  'aws:RequestTag/elbv2.k8s.aws/cluster': 'false'
+            - Effect: Allow
+              Action:
+                - 'elasticloadbalancing:CreateListener'
+                - 'elasticloadbalancing:DeleteListener'
+                - 'elasticloadbalancing:CreateRule'
+                - 'elasticloadbalancing:DeleteRule'
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - 'elasticloadbalancing:AddTags'
+                - 'elasticloadbalancing:RemoveTags'
+              Resource:
+                - !Sub 'arn:${AWS::Partition}:elasticloadbalancing:*:*:targetgroup/*/*'
+                - !Sub 'arn:${AWS::Partition}:elasticloadbalancing:*:*:loadbalancer/net/*/*'
+                - !Sub 'arn:${AWS::Partition}:elasticloadbalancing:*:*:loadbalancer/app/*/*'
+              Condition:
+                'Null':
+                  'aws:RequestTag/elbv2.k8s.aws/cluster': 'true'
+                  'aws:ResourceTag/elbv2.k8s.aws/cluster': 'false'
+            - Effect: Allow
+              Action:
+                - 'elasticloadbalancing:AddTags'
+                - 'elasticloadbalancing:RemoveTags'
+              Resource:
+                - !Sub 'arn:${AWS::Partition}:elasticloadbalancing:*:*:listener/net/*/*/*'
+                - !Sub 'arn:${AWS::Partition}:elasticloadbalancing:*:*:listener/app/*/*/*'
+                - !Sub 'arn:${AWS::Partition}:elasticloadbalancing:*:*:listener-rule/net/*/*/*'
+                - !Sub 'arn:${AWS::Partition}:elasticloadbalancing:*:*:listener-rule/app/*/*/*'
+            - Effect: Allow
+              Action:
+                - 'elasticloadbalancing:ModifyLoadBalancerAttributes'
+                - 'elasticloadbalancing:SetIpAddressType'
+                - 'elasticloadbalancing:SetSecurityGroups'
+                - 'elasticloadbalancing:SetSubnets'
+                - 'elasticloadbalancing:DeleteLoadBalancer'
+                - 'elasticloadbalancing:ModifyTargetGroup'
+                - 'elasticloadbalancing:ModifyTargetGroupAttributes'
+                - 'elasticloadbalancing:DeleteTargetGroup'
+              Resource: '*'
+              Condition:
+                'Null':
+                  'aws:ResourceTag/elbv2.k8s.aws/cluster': 'false'
+            - Effect: Allow
+              Action:
+                - 'elasticloadbalancing:RegisterTargets'
+                - 'elasticloadbalancing:DeregisterTargets'
+              Resource: !Sub 'arn:${AWS::Partition}:elasticloadbalancing:*:*:targetgroup/*/*'
+            - Effect: Allow
+              Action:
+                - 'elasticloadbalancing:SetWebAcl'
+                - 'elasticloadbalancing:ModifyListener'
+                - 'elasticloadbalancing:AddListenerCertificates'
+                - 'elasticloadbalancing:RemoveListenerCertificates'
+                - 'elasticloadbalancing:ModifyRule'
+              Resource: '*'
+  LoadBalancerControllerHelmChart:
+    Type: "AWSQS::Kubernetes::Helm"
+    Metadata: { cfn-lint: { config: { ignore_checks: [ E3012 ] } } }
+    Properties:
+      ClusterID: !Ref EksClusterName
+      Namespace: kube-system
+      Name: aws-load-balancer-controller
+      Repository: https://aws.github.io/eks-charts
+      Chart: aws-load-balancer-controller
+      Version: 1.2.7
+      Values:
+        clusterName: !Ref EksClusterName
+        region: !Sub '${AWS::Region}'
+        resources.limits.cpu: !Ref ControllerCPULimit
+        resources.limits.memory: !Ref ControllerMemoryLimit
+        replicaCount: 1
+        hostNetwork: !If [ HostNetworkEnabled, "true", "false" ]
+        image.repository: !FindInMap [RegionMap, !Ref "AWS::Region", lbrepo]
+        vpcId: !Ref VpcId
+      ValueYaml: !Sub |
+        serviceAccount:
+          annotations:
+            eks.amazonaws.com/role-arn: ${LoadBalancerControllerIAMRole.Arn}
+        nodeSelector:
+          kubernetes.io/os: linux
+Outputs:
+  LoadBalancerControllerHelmChart:
+    Value: !Ref LoadBalancerControllerHelmChart

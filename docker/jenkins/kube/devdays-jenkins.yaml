@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: devdays-jenkins
+spec:
+  selector:
+    matchLabels:
+      run: devdays-jenkins
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        run: devdays-jenkins
+    spec:
+      containers:
+          - name: app
+            image: 517716713836.dkr.ecr.eu-west-1.amazonaws.com/devdays-jenkins
+            imagePullPolicy: Always
+            command:
+              - "/bin/tini"
+            args:
+              - "--"
+              - "/usr/local/bin/jenkins.sh"
