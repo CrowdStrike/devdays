@@ -18,7 +18,7 @@ phases:
     commands:
       - echo Build started on `date`
       - echo Building the Docker image...
-      - docker build -t $REPOSITORY_URI:latest ./app/victim/.
+      - docker build -t $REPOSITORY_URI:latest ./app/tomcat/.
       - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
       - echo running image-scan.sh
       - chmod +x ./cs_image_scan/image-scan.sh

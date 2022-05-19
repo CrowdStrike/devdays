@@ -10,11 +10,15 @@ phases:
       - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
       - IMAGE_TAG=${COMMIT_HASH:=latest}
       - echo "Update Image tag in kube-manifest..."
-      - sed -i 's@CONTAINER_IMAGE@'"$REPOSITORY_URI:$IMAGE_TAG"'@' ./app/victim/deployment.yaml
-      - cat ./app/victim/deployment.yaml
+      - sed -i 's@CONTAINER_IMAGE@'"$REPOSITORY_URI:$IMAGE_TAG"'@' ./app/tomcat/k8s/deployment.yaml
+      - cat ./app/tomcat/k8s/deployment.yaml
   build:
     on-failure: ABORT
     commands:
       - echo Deploy started on `date`
       - echo Deploying to the EKS cluster...
-      - kubectl apply -f ./app/victim/deployment.yaml
+      - kubectl apply -f ./app/tomcat/k8s/deployment.yaml
+      - echo Deploying Service to the EKS cluster... 
+      - kubectl apply -f ./app/tomcat/k8s/service.yaml 
+      - echo Deploying Ingress to the EKS cluster...
+      - kubectl apply -f ./app/tomcat/k8s/ingress.yaml

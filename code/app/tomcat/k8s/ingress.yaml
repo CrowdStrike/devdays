@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: "tomcat-ingress"
+  annotations:
+    kubernetes.io/ingress.class: alb
+  labels:
+    app: tomcat
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /tomcat
+            pathType: Prefix
+            backend:
+              service:
+                name: "tomcat"
+                port:
+                  number: 80
