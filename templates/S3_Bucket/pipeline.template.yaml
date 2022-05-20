@@ -15,7 +15,7 @@ Parameters:
   # AWS ECR Repository
   ECRRepositoryName:
     Type: String
-    Default: 'vulnerableapp'
+    Default: 'log4j-tomcat'
 
   # AWS Codebuild Project
   ECRCodeBuildProjectName:
@@ -181,7 +181,7 @@ Resources:
           referenceType:
             - branch
           referenceName:
-            - master
+            - !Ref BranchName
       Targets:
         - Arn: !Join 
             - ''
