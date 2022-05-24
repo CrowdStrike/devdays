@@ -1,0 +1,239 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'EKS cluster'
+Parameters:
+  PermissionsBoundary:
+    Type: String
+    Default: 'BoundaryForAdministratorAccess'
+
+  EksClusterName:
+    Type: String
+    Default: CRWD-EKS-Cluster
+  Username:
+    Type: String
+    Default: "wus-cloudshare"
+    Description: IAM User who will be mapped system:masters
+  VpcId:
+    Type: String
+  BastionRole:
+    Type: String
+
+  SubnetPrivate1:
+    Type: String
+  SubnetPrivate2:
+    Type: String
+
+  SubnetPublic1:
+    Type: String
+  SubnetPublic2:
+    Type: String
+  
+  EKSCodeBuildServiceRoleArn:
+    Type: String
+
+
+Conditions:
+  PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
+
+Resources:
+  ClusterSharedNodeSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Communication between all nodes in the cluster
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: "${AWS::StackName}/ClusterSharedNodeSecurityGroup"
+      VpcId:
+        Ref: VpcId
+  serviceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      PermissionsBoundary:
+        Fn::If:
+          - PermissionsBoundary
+          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+          - Ref: AWS::NoValue
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: eks.amazonaws.com }
+            Action: sts:AssumeRole
+      Path: "/"
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonEKSClusterPolicy'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonEKSServicePolicy'
+  Cluster:
+    Type: AWSQS::EKS::Cluster
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks: [ E3001 ]
+    Properties:
+#      KubernetesNetworkConfig:
+#        IpFamily: ipv4
+      Name: !Ref EksClusterName
+      ResourcesVpcConfig:
+        EndpointPrivateAccess: true
+        EndpointPublicAccess: true
+        SecurityGroupIds:
+          - !Ref ControlPlaneSecurityGroup
+        SubnetIds:
+          - !Ref SubnetPublic1
+          - !Ref SubnetPublic2
+
+          - !Ref SubnetPrivate1
+          - !Ref SubnetPrivate2
+
+      RoleArn: !GetAtt serviceRole.Arn
+      Version: '1.21'
+      KubernetesApiAccess:
+        Users:
+          - Arn: !Sub "arn:aws:iam::${AWS::AccountId}:user/${Username}"
+            Username: !Sub "arn:aws:iam::${AWS::AccountId}:user/${Username}"
+            Groups: [ "system:masters" ]
+        Roles:
+          - Arn: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/CS-Okta-Full-Admins-Write"
+            Username: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/CS-Okta-Full-Admins-Write"
+            Groups: [ 'system:masters' ]
+          - Arn: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${BastionRole}"
+            Username: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${BastionRole}"
+            Groups: [ 'system:masters' ]
+          - Arn: !Ref EKSCodeBuildServiceRoleArn
+            Username: EKSCodeDeploy
+            Groups: [ 'system:masters' ]
+#  CleanupLoadBalancers:
+#    Type: Custom::CleanupLoadBalancers
+#    Properties:
+#      Name: !Sub "${AWS::StackName}-CleanupLoadBalancers"
+#      ServiceToken: !Sub 'arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:CleanupLoadBalancersLambda'
+#      ClusterName: !Ref EksClusterName
+  ClusterOIDCProvider:
+    Type: AWS::IAM::OIDCProvider
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - E3001
+            - E1010
+    Properties:
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList:
+        - 9e99a48a9960b14926bb7f3b02e22da2b0ab7280
+      Url: !GetAtt Cluster.OIDCIssuerURL
+
+  ControlPlaneSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Communication between the control plane and worker nodegroups
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: "${AWS::StackName}/ControlPlaneSecurityGroup"
+      VpcId:
+        Ref: VpcId
+  IngressDefaultClusterToNodeSG:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Allow managed and unmanaged nodes to communicate with each other
+        (all ports)
+      FromPort: 0
+      GroupId:
+        Ref: ClusterSharedNodeSecurityGroup
+      IpProtocol: "-1"
+      SourceSecurityGroupId:
+        Fn::GetAtt:
+        - Cluster
+        - ClusterSecurityGroupId
+      ToPort: 65535
+  IngressInterNodeGroupSG:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Allow nodes to communicate with each other (all ports)
+      FromPort: 0
+      GroupId:
+        Ref: ClusterSharedNodeSecurityGroup
+      IpProtocol: "-1"
+      SourceSecurityGroupId:
+        Ref: ClusterSharedNodeSecurityGroup
+      ToPort: 65535
+  IngressNodeToDefaultClusterSG:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Allow unmanaged nodes to communicate with control plane (all ports)
+      FromPort: 0
+      GroupId:
+        Fn::GetAtt:
+        - Cluster
+        - ClusterSecurityGroupId
+      IpProtocol: "-1"
+      SourceSecurityGroupId:
+        Ref: ClusterSharedNodeSecurityGroup
+      ToPort: 65535
+  PolicyCloudWatchMetrics:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+        - Action:
+          - cloudwatch:PutMetricData
+          Effect: Allow
+          Resource: "*"
+        Version: '2012-10-17'
+      PolicyName:
+        Fn::Sub: "${AWS::StackName}-PolicyCloudWatchMetrics"
+      Roles:
+      - Ref: serviceRole
+  PolicyELBPermissions:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+        - Action:
+          - ec2:DescribeAccountAttributes
+          - ec2:DescribeAddresses
+          - ec2:DescribeInternetGateways
+          Effect: Allow
+          Resource: "*"
+        Version: '2012-10-17'
+      PolicyName:
+        Fn::Sub: "${AWS::StackName}-PolicyELBPermissions"
+      Roles:
+      - Ref: serviceRole
+Outputs:
+  EksArn:
+    Value: !GetAtt Cluster.Arn
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}::EksArn"
+  EKSEndpoint:
+    Value: !GetAtt Cluster.Endpoint
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}::EKSEndpoint"
+  ClusterSecurityGroupId:
+    Value: !Ref ClusterSharedNodeSecurityGroup
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}::ClusterSecurityGroupId"
+  EKSName:
+    Value: !Ref Cluster
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}::EKSName"
+  OIDCIssuerURL:
+    Value: !GetAtt Cluster.OIDCIssuerURL
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}::OIDCIssuerURL"
+  CAData:
+    Value: !GetAtt Cluster.CertificateAuthorityData
+
+  ControlPlaneSecurityGroupId:
+    Value: !Ref ControlPlaneSecurityGroup
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}::ControlPlaneSecurityGroupId"
+

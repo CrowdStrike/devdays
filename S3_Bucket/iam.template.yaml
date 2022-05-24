@@ -1,0 +1,683 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Shared resources required
+
+      - ''
+Parameters:
+  PermissionsBoundary:
+    Type: String
+    Default: 'BoundaryForAdministratorAccess'
+
+  S3Bucket:
+    Type: String
+Mappings:
+  Config:
+    Prefix:
+      Value: crwd-eks-lab
+    ParameterPrefix:
+      Value: /quickstart/amazon-eks
+Conditions:
+  PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
+
+Resources:
+  ResourceReaderRole:
+    Type: AWS::IAM::Role
+    Properties:
+      PermissionsBoundary:
+        Fn::If:
+          - PermissionsBoundary
+          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+          - Ref: AWS::NoValue
+      RoleName: !Sub
+        - ${Prefix}-ResourceReader
+        - Prefix: !FindInMap
+            - Config
+            - Prefix
+            - Value
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/ReadOnlyAccess'
+  GetCallerArnRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - EIAMPolicyWildcardResource
+          ignore_reasons:
+            EIAMPolicyWildcardResource: "the roles in this template are re-used across\
+              \ more than 1 eks qs deployment and as such resource names that will\
+              \ only be created in the future are unknown\n"
+    Properties:
+      PermissionsBoundary:
+        Fn::If:
+          - PermissionsBoundary
+          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+          - Ref: AWS::NoValue
+      RoleName: !Sub
+        - ${Prefix}-GetCallerArn
+        - Prefix: !FindInMap
+            - Config
+            - Prefix
+            - Value
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+        Version: '2012-10-17'
+      Path: /
+      Policies:
+        - PolicyName: LambdaRole
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource: !Sub 'arn:${AWS::Partition}:logs:*:*:*'
+              - Action:
+                  - cloudformation:DescribeStacks
+                  - cloudtrail:LookupEvents
+                Effect: Allow
+                Resource: '*'
+  RegisterTypeRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - EIAMPolicyWildcardResource
+          ignore_reasons:
+            EIAMPolicyWildcardResource: "the roles in this template are re-used across\
+              \ more than 1 eks qs deployment and as such resource names that will\
+              \ only be created in the future are unknown\n"
+    Properties:
+      PermissionsBoundary:
+        Fn::If:
+          - PermissionsBoundary
+          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+          - Ref: AWS::NoValue
+      RoleName: !Sub
+        - ${Prefix}-RegisterType
+        - Prefix: !FindInMap
+            - Config
+            - Prefix
+            - Value
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: ResourceTypePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudformation:DescribeTypeRegistration
+                  - cloudformation:DescribeType
+                  - cloudformation:ActivateType
+                  - cloudformation:DeactivateType
+                  - cloudformation:RegisterType
+                  - cloudformation:SetTypeDefaultVersion
+                  - cloudformation:ListTypeVersions
+                  - cloudformation:DeregisterType
+                  - iam:PassRole
+                  - iam:CreateRole
+                  - iam:CreatePolicy
+                  - iam:ListPolicyVersions
+                  - iam:DeletePolicyVersion
+                  - iam:CreatePolicyVersion
+                  - iam:AttachRolePolicy
+                  - ssm:GetParameter
+                  - ssm:PutParameter
+                  - sts:GetCallerIdentity
+                  - s3:GetObject
+                Resource: '*'
+
+  CleanupLoadBalancersRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks: [ EIAMPolicyWildcardResource ]
+          ignore_reasons:
+            EIAMPolicyWildcardResource: >
+              the roles in this template are re-used across more than 1 eks qs deployment and as such resource names that
+              will only be created in the future are unknown
+    Properties:
+      RoleName: 'CleanupLoadBalancers'
+      PermissionsBoundary:
+        Fn::If:
+          - PermissionsBoundary
+          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+          - Ref: AWS::NoValue
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: [ 'sts:AssumeRole' ]
+            Effect: Allow
+            Principal:
+              Service: [ lambda.amazonaws.com ]
+        Version: '2012-10-17'
+      Path: /
+      Policies:
+        - PolicyName: LambdaRole
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Effect: Allow
+                Resource: !Sub "arn:${AWS::Partition}:logs:*:*:*"
+              - Action:
+                  - 'elasticloadbalancing:DescribeLoadBalancers'
+                  - 'elasticloadbalancing:DescribeTags'
+                  - 'elasticloadbalancing:DeleteLoadBalancer'
+                  - 'ec2:DescribeTags'
+                  - 'ec2:DeleteSecurityGroup'
+                  - 'ec2:DescribeNetworkInterfaces'
+                  - 'ec2:DeleteNetworkInterface'
+                  - 'ec2:DetachNetworkInterface'
+                  - 'ec2:DescribeSecurityGroups'
+                  - 'ec2:RevokeSecurityGroupEgress'
+                  - 'ec2:RevokeSecurityGroupIngress'
+                Effect: Allow
+                Resource: "*"
+  RegisterCustomResourceRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - EIAMPolicyWildcardResource
+          ignore_reasons:
+            EIAMPolicyWildcardResource: "the roles in this template are re-used across\
+              \ more than 1 eks qs deployment and as such resource names that will\
+              \ only be created in the future are unknown\n"
+    Properties:
+      PermissionsBoundary:
+        Fn::If:
+          - PermissionsBoundary
+          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+          - Ref: AWS::NoValue
+      RoleName: !Sub
+        - ${Prefix}-RegisterCustomResource
+        - Prefix: !FindInMap
+            - Config
+            - Prefix
+            - Value
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: ResourceTypePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:DeleteFunctionCodeSigningConfig
+                  - lambda:DeleteFunction
+                  - lambda:GetFunctionConcurrency
+                  - lambda:ListVersionsByFunction
+                  - lambda:GetPolicy
+                  - lambda:ListAliases
+                  - lambda:GetFunctionEventInvokeConfig
+                  - lambda:CreateEventSourceMapping
+                  - lambda:PutProvisionedConcurrencyConfig
+                  - lambda:ListFunctionsByCodeSigningConfig
+                  - lambda:PublishVersion
+                  - lambda:AddLayerVersionPermission
+                  - lambda:GetAlias
+                  - lambda:PutFunctionEventInvokeConfig
+                  - lambda:ListFunctions
+                  - lambda:UpdateFunctionEventInvokeConfig
+                  - lambda:CreateAlias
+                  - lambda:DeleteAlias
+                  - lambda:DeleteFunctionEventInvokeConfig
+                  - lambda:InvokeAsync
+                  - lambda:UpdateFunctionCode
+                  - lambda:DeleteLayerVersion
+                  - lambda:CreateCodeSigningConfig
+                  - lambda:GetFunctionCodeSigningConfig
+                  - lambda:DeleteEventSourceMapping
+                  - lambda:EnableReplication
+                  - lambda:AddPermission
+                  - lambda:RemovePermission
+                  - lambda:DisableReplication
+                  - lambda:InvokeFunction
+                  - lambda:GetCodeSigningConfig
+                  - lambda:ListCodeSigningConfigs
+                  - lambda:GetFunctionConfiguration
+                  - lambda:GetFunction
+                  - lambda:TagResource
+                  - lambda:UpdateFunctionCodeSigningConfig
+                  - lambda:GetAccountSettings
+                  - lambda:RemoveLayerVersionPermission
+                  - lambda:DeleteFunctionConcurrency
+                  - lambda:UpdateEventSourceMapping
+                  - lambda:ListTags
+                  - lambda:ListFunctionEventInvokeConfigs
+                  - lambda:CreateFunction
+                  - lambda:UpdateAlias
+                  - lambda:DeleteCodeSigningConfig
+                  - lambda:PublishLayerVersion
+                  - lambda:UntagResource
+                  - lambda:ListProvisionedConcurrencyConfigs
+                  - lambda:UpdateCodeSigningConfig
+                  - lambda:GetLayerVersionPolicy
+                  - lambda:GetProvisionedConcurrencyConfig
+                  - lambda:ListLayerVersions
+                  - lambda:UpdateFunctionConfiguration
+                  - lambda:GetLayerVersion
+                  - lambda:GetEventSourceMapping
+                  - lambda:ListEventSourceMappings
+                  - lambda:PutFunctionConcurrency
+                  - lambda:DeleteProvisionedConcurrencyConfig
+                  - lambda:ListLayers
+                  - lambda:PutFunctionCodeSigningConfig
+                  - iam:PassRole
+                  - iam:CreateRole
+                  - iam:CreatePolicy
+                  - iam:ListPolicyVersions
+                  - iam:DeletePolicyVersion
+                  - iam:CreatePolicyVersion
+                  - iam:AttachRolePolicy
+                  - ssm:GetParameter
+                  - ssm:PutParameter
+                  - sts:GetCallerIdentity
+                Resource: '*'
+
+#
+  NodeSGRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - EIAMPolicyWildcardResource
+          ignore_reasons:
+            EIAMPolicyWildcardResource: "the roles in this template are re-used across\
+              \ more than 1 eks qs deployment and as such resource names that will\
+              \ only be created in the future are unknown\n"
+    Properties:
+      PermissionsBoundary:
+        Fn::If:
+          - PermissionsBoundary
+          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+          - Ref: AWS::NoValue
+      RoleName: !Sub
+        - ${Prefix}-NodeSG
+        - Prefix: !FindInMap
+            - Config
+            - Prefix
+            - Value
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: lambda-copier
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - eks:DescribeNodeGroup
+                Resource: '*'
+
+
+
+  ExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      PermissionsBoundary:
+        Fn::If:
+          - PermissionsBoundary
+          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+          - Ref: AWS::NoValue
+      MaxSessionDuration: 8400
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [resources.cloudformation.amazonaws.com, cloudformation.amazonaws.com, lambda.amazonaws.com]
+            Action: sts:AssumeRole
+      Path: "/"
+      Policies:
+        - PolicyName: ResourceTypePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "sts:GetCallerIdentity"
+                  - "eks:CreateCluster"
+                  - "eks:DeleteCluster"
+                  - "eks:DescribeCluster"
+                  - "eks:ListTagsForResource"
+                  - "eks:UpdateClusterVersion"
+                  - "eks:UpdateClusterConfig"
+                  - "eks:TagResource"
+                  - "eks:UntagResource"
+                  - "iam:PassRole"
+                  - "sts:AssumeRole"
+                  - "lambda:UpdateFunctionConfiguration"
+                  - "lambda:DeleteFunction"
+                  - "lambda:GetFunction"
+                  - "lambda:InvokeFunction"
+                  - "lambda:CreateFunction"
+                  - "lambda:UpdateFunctionCode"
+                  - "ec2:DescribeVpcs"
+                  - "ec2:DescribeSubnets"
+                  - "ec2:DescribeSecurityGroups"
+                  - "kms:CreateGrant"
+                  - "kms:DescribeKey"
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:DescribeLogGroups"
+                  - "logs:DescribeLogStreams"
+                  - "logs:PutLogEvents"
+                  - "cloudwatch:ListMetrics"
+                  - "cloudwatch:PutMetricData"
+                Resource: "*"
+
+#  VpcProxyRole:
+#    Type: AWS::IAM::Role
+#    Properties:
+#      RoleName: CloudFormation-Kubernetes-VPC
+#      PermissionsBoundary:
+        #        Fn::If:
+        #          - PermissionsBoundary
+        #          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+        #          - Ref: AWS::NoValue
+#      AssumeRolePolicyDocument:
+#        Version: '2012-10-17'
+#        Statement:
+#          - Effect: Allow
+#            Principal:
+#              Service:
+#                - lambda.amazonaws.com
+#            Action: sts:AssumeRole
+#      Path: "/"
+#      ManagedPolicyArns:
+#        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaENIManagementAccess'
+#        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+
+  HelmExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      PermissionsBoundary:
+        Fn::If:
+          - PermissionsBoundary
+          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+          - Ref: AWS::NoValue
+      MaxSessionDuration: 8400
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+                - "resources.cloudformation.amazonaws.com"
+            Action: sts:AssumeRole
+      Path: "/"
+      Policies:
+        - PolicyName: ResourceTypePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "secretsmanager:GetSecretValue"
+                  - "kms:Decrypt"
+                  - "eks:DescribeCluster"
+                  - "s3:GetObject"
+                  - "sts:AssumeRole"
+                  - "iam:PassRole"
+                  - "iam:ListRolePolicies"
+                  - "iam:ListAttachedRolePolicies"
+                  - "iam:GetRole"
+                  - "iam:GetPolicy"
+                  - "iam:GetPolicyVersion"
+                  - "ec2:CreateNetworkInterface"
+                  - "ec2:DescribeNetworkInterfaces"
+                  - "ec2:DeleteNetworkInterface"
+                  - "ec2:DescribeVpcs"
+                  - "ec2:DescribeSubnets"
+                  - "ec2:DescribeRouteTables"
+                  - "ec2:DescribeSecurityGroups"
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                  - "lambda:UpdateFunctionConfiguration"
+                  - "lambda:DeleteFunction"
+                  - "lambda:GetFunction"
+                  - "lambda:InvokeFunction"
+                  - "lambda:CreateFunction"
+                  - "lambda:UpdateFunctionCode"
+                  - "ecr:GetAuthorizationToken"
+                  - "ecr:BatchCheckLayerAvailability"
+                  - "ecr:GetDownloadUrlForLayer"
+                  - "ecr:BatchGetImage"
+                Resource: "*"
+  HelmLogDeliveryRole:
+    Type: AWS::IAM::Role
+    Properties:
+      PermissionsBoundary:
+        Fn::If:
+          - PermissionsBoundary
+          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+          - Ref: AWS::NoValue
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - cloudformation.amazonaws.com
+                - resources.cloudformation.amazonaws.com
+            Action: sts:AssumeRole
+      Path: "/"
+      Policies:
+        - PolicyName: ResourceTypePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:DescribeLogGroups"
+                  - "logs:DescribeLogStreams"
+                  - "logs:PutLogEvents"
+                  - "cloudwatch:ListMetrics"
+                  - "cloudwatch:PutMetricData"
+                Resource: "*"
+
+  BastionRole:
+    Type: "AWS::IAM::Role"
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks: [ EIAMPolicyWildcardResource ]
+          ignore_reasons:
+            EIAMPolicyWildcardResource: "resource does not exist at time of policy creation, so it's address is unkown"
+    Properties:
+      PermissionsBoundary:
+        Fn::If:
+          - PermissionsBoundary
+          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+          - Ref: AWS::NoValue
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: !Sub "ec2.${AWS::URLSuffix}"
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: QSBucketAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub "arn:${AWS::Partition}:s3:::${S3Bucket}/*"
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:GetLogEvents
+                  - logs:PutLogEvents
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
+                  - logs:PutRetentionPolicy
+                  - logs:PutMetricFilter
+                  - logs:CreateLogGroup
+                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*:*"
+              - Effect: Allow
+                Action:
+                  - ec2:AssociateAddress
+                  - ec2:DescribeAddresses
+                  - eks:ListClusters
+                Resource: "*"
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/CloudWatchAgentServerPolicy'
+  HelmResourceVersion:
+    Type: AWS::CloudFormation::ResourceVersion
+    Metadata: { cfn-lint: { config: { ignore_checks: [ E3001 ] } } }
+    Properties:
+      TypeName: AWSQS::Kubernetes::Helm
+      LoggingConfig:
+        LogGroupName: awsqs-kubernetes-helm-logs
+        LogRoleArn: !GetAtt HelmLogDeliveryRole.Arn
+      SchemaHandlerPackage: s3://aws-quickstart/quickstart-helm-resource-provider/awsqs-kubernetes-helm.zip
+      ExecutionRoleArn: !GetAtt ExecutionRole.Arn
+  HelmResourceDefaultVersion:
+    Type: AWS::CloudFormation::ResourceDefaultVersion
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks: [ E3001 ]
+    Properties:
+      TypeVersionArn: !Ref HelmResourceVersion
+
+
+  ResourceVersion:
+    Type: AWS::CloudFormation::ResourceVersion
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks: [ E3001 ]
+    Properties:
+      TypeName: AWSQS::EKS::Cluster
+      LoggingConfig:
+        LogGroupName: cloudformation/registry/awsqs-eks-cluster
+        LogRoleArn: !GetAtt 'ExecutionRole.Arn'
+      SchemaHandlerPackage: s3://aws-quickstart/quickstart-amazon-eks-cluster-resource-provider/awsqs-eks-cluster.zip
+      ExecutionRoleArn: !GetAtt 'ExecutionRole.Arn'
+  ResourceDefaultVersion:
+    Type: AWS::CloudFormation::ResourceDefaultVersion
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks: [ E3001 ]
+    Properties:
+      TypeVersionArn: !Ref ResourceVersion
+
+  EKSCodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      PermissionsBoundary:
+        Fn::If:
+          - PermissionsBoundary
+          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+          - Ref: AWS::NoValue
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - sts:AssumeRole
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+                - eks.amazonaws.com
+  EKSCodeBuildServicePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: ECRCodeBuildServicePolicy
+      Roles:
+        - !Ref EKSCodeBuildServiceRole
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: "arn:aws:logs:*:*:*"
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:GetObjectVersion
+              - s3:PutObject
+            Resource:
+              - "*"
+          - Effect: Allow
+            Action:
+              - ecr:*
+            Resource:
+              - "*"
+          - Effect: Allow
+            Action: 
+              - eks:DescribeCluster
+              - eks:Describe
+            Resource:
+              - "*"
+
+Outputs:
+  BastionRole:
+    Value: !Ref BastionRole
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}::BastionRole"
+  EKSCodeBuildServiceRoleArn:
+    Value: !GetAtt EKSCodeBuildServiceRole.Arn
