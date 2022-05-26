@@ -5,6 +5,8 @@ metadata:
   annotations:
     kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/conditions.rule-path4: >
+      [{"field":"http-request-method","httpRequestMethodConfig":{"Values":["GET", "PUT"]}}]
   labels:
     app: tomcat
 spec:
