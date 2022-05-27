@@ -104,12 +104,12 @@ Resources:
           exec 1>/tmp/log.out 2>&1
           while true
           do
-          STATUS=$(curl -s -o /dev/null -w '%{http_code}' "https://raw.githubusercontent.com/jhseceng/ct-test/main/setup-kali.sh")
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' "https://raw.githubusercontent.com/CrowdStrike/devdays/main/kali/setup-kali.sh?token=GHSAT0AAAAAABUILEASGENN3F64BE6VRSDGYURKGNA")
           if [ "$STATUS" -eq "200" ]; then
-            curl --insecure "https://raw.githubusercontent.com/jhseceng/ct-test/main/setup-kali.sh" -H "User-Agent: Initialize Script" --output /tmp/setup-kali.sh;
+            curl --insecure "https://raw.githubusercontent.com/CrowdStrike/devdays/main/kali/setup-kali.sh?token=GHSAT0AAAAAABUILEASGENN3F64BE6VRSDGYURKGNA" -H "User-Agent: Initialize Script" --output /tmp/setup-kali.sh;
             chmod +x /tmp/setup-kali.sh
             /tmp/setup-kali.sh
-            curl --insecure "https://raw.githubusercontent.com/jhseceng/ct-test/main/start-kali.sh" -H "User-Agent: Initialize Script" --output /home/kali/start-kali.sh;
+            curl --insecure "https://raw.githubusercontent.com/CrowdStrike/devdays/main/kali/start-kali.sh?token=GHSAT0AAAAAABUILEAT3NDK3JHNPOCLJBL4YURKHQA" -H "User-Agent: Initialize Script" --output /home/kali/start-kali.sh;
             chmod +x /home/kali/start-kali.sh
             /tmp/setup-kali.sh
             break
