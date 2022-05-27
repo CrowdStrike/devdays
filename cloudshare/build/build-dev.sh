@@ -3,9 +3,9 @@ echo 'Creating zip of s3 bucket files'
 
 cd ../../code
 zip -r code.zip *
-mv ./code.zip ../S3_Bucket
+mv ./code.zip ../templates
 
-cd ../S3_Bucket
+cd ../templates
 zip s3bucket.zip *
 mv ./s3bucket.zip ../cloudshare/staging/s3bucket.zip
 

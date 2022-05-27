@@ -79,8 +79,7 @@ Parameters:
     Type: String
   LatestKaliAMI:
     Type: AWS::EC2::Image::Id
-#    Default: ami-03748e24fab766cfc
-    Default: ami-05dc7051a2b982b6a
+    Default: ami-00f2e79091d9064be
 Conditions:
   PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
 Resources:

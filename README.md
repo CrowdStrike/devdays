@@ -6,7 +6,7 @@ AWSQS::EKS::CLUSTER CFT extension
 Upload files in S3 bucket and load cwp-lab-entrypoint.yaml
 
 ## AWS cli deploy command
-`aws cloudformation deploy --template-file templates/S3_Bucket/cwp-lab-entrypoint.yaml --stack-name <stackname> --parameter-overrides S3Bucket=<bucketname> FalconClientID=<ClidentID> FalconClientSecret=<ClientSecret> --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM`
+`aws cloudformation deploy --template-file templates/cwp-lab-entrypoint.yaml --stack-name <stackname> --parameter-overrides S3Bucket=<bucketname> FalconClientID=<ClidentID> FalconClientSecret=<ClientSecret> --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM`
 
 ## Templates
 
