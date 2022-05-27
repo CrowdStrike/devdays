@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM public.ecr.aws/ubuntu/ubuntu:18.04
 RUN apt-get -yqq update
 RUN apt-get -yqq install openjdk-8-jdk wget net-tools
 RUN mkdir /opt/tomcat \
