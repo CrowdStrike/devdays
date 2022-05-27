@@ -29,6 +29,8 @@ Metadata:
       VPCCIDR:
         default: VPC CIDR
 Parameters:
+  NATGatewayEIP:
+    Type: String
   S3Bucket:
     Type: String
   PermissionsBoundary:
@@ -82,86 +84,35 @@ Parameters:
 Conditions:
   PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
 Resources:
-  Tomcat:
-    Type: AWS::EC2::Instance
-    Properties:
-      KeyName: !Ref 'KeyPairName'
-      NetworkInterfaces:
-        - NetworkInterfaceId: !Ref 'TomcatNetInt'
-          DeviceIndex: '0'
-      UserData:
-        Fn::Base64: !Sub |
-          #!/bin/bash
-          exec 3>&1 4>&2
-          trap 'exec 2>&4 1>&3' 0 1 2 3
-          exec 1>/tmp/log.out 2>&1
-          echo \${var.CS_Env_Id} > /tmp/env.txt
-          while true
-          do
-            STATUS=$(curl -s -o /dev/null -w '%{http_code}' "https://${S3Bucket}.${AWS::Region}.amazonaws.com/setup-tomcat.sh")
-            if [ "$STATUS" -eq "200" ]; then
-              curl --insecure "http://provisioning.aws.cs-labs.net/workshop/cwp/setup-tomcat.sh" -H "User-Agent: Initialize Script" --output /tmp/setup-tomcat.sh;
-              chmod +x /tmp/setup-tomcat.sh;
-              /bin/bash /tmp/setup-tomcat.sh --cid ${local.customer_id};
-              break
-            else
-              echo "Got $STATUS :( Not done yet..."
-            fi
-            sleep 10
-          done
-      InstanceType: m4.large
-      AvailabilityZone: !Select
-        - 0
-        - !GetAZs
-          Ref: 'AWS::Region'
-      IamInstanceProfile: !Ref KaliBootstrapInstanceProfile
-      ImageId: !Ref 'LatestKaliAMI'
-      Tags:
-        - Key: Name
-          Value: 'Kali'
-        - Key: CRWD_MANAGED
-          Value: 'YES'
-        - Key: tag-accounting
-          Value: !Ref Accounting
-        - Key: tag-business
-          Value: !Ref Business
-        - Key: tag-department
-          Value: !Ref Department
-        - Key: tag-owner
-          Value: !Ref Owner
-  TomcatNetInt:
-    Type: AWS::EC2::NetworkInterface
-    Properties:
-      SubnetId: !Ref 'KaliPublicSubnet'
-      GroupSet:
-        - !Ref 'KaliSecurityGroup'
-  KaliNetInt:
-    Type: AWS::EC2::NetworkInterface
-    Properties:
-      SubnetId: !Ref 'KaliPublicSubnet'
-      GroupSet:
-        - !Ref 'KaliSecurityGroup'
   Kali:
     Type: AWS::EC2::Instance
     Properties:
-      KeyName: !Ref 'KeyPairName'
       NetworkInterfaces:
-        - NetworkInterfaceId: !Ref 'KaliNetInt'
-          DeviceIndex: '0'
+        - AssociatePublicIpAddress: "true"
+          DeviceIndex: "0"
+          GroupSet:
+            - Ref: 'KaliSecurityGroup'
+          SubnetId:
+            Ref: KaliPublicSubnet
+      KeyName: !Ref 'KeyPairName'
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
-          aws_region=${AWS::Region}
+          export aws_region=${AWS::Region}
+          export KALI_PUB_IP=$(curl http://169.254.169.254/latest/meta-data/public-ipv4)
           exec 3>&1 4>&2
           trap 'exec 2>&4 1>&3' 0 1 2 3
           exec 1>/tmp/log.out 2>&1
           while true
           do
-          STATUS=$(curl -s -o /dev/null -w '%{http_code}' "https://${S3Bucket}.${AWS::Region}.amazonaws.com/setup-kali.sh")
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' "https://raw.githubusercontent.com/jhseceng/ct-test/main/setup-kali.sh")
           if [ "$STATUS" -eq "200" ]; then
-            curl --insecure "https://${S3Bucket}.${AWS::Region}.amazonaws.com/setup-kali.sh" -H "User-Agent: Initialize Script" --output /tmp/setup-kali.sh;
+            curl --insecure "https://raw.githubusercontent.com/jhseceng/ct-test/main/setup-kali.sh" -H "User-Agent: Initialize Script" --output /tmp/setup-kali.sh;
             chmod +x /tmp/setup-kali.sh
-            # Dont run the script until we have the target IP
+            /tmp/setup-kali.sh
+            curl --insecure "https://raw.githubusercontent.com/jhseceng/ct-test/main/start-kali.sh" -H "User-Agent: Initialize Script" --output /home/kali/start-kali.sh;
+            chmod +x /home/kali/start-kali.sh
+            /tmp/setup-kali.sh
             break
           else
             echo "Got $STATUS :( Not done yet..."
@@ -273,7 +224,7 @@ Resources:
   KaliSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Enables Admin Access to basic linux hosts
+      GroupDescription: Port 80 and 443 open to VPC NATGW for exploit
       VpcId:
         Ref: KaliVPC
       SecurityGroupIngress:
@@ -284,7 +235,11 @@ Resources:
         - IpProtocol: tcp
           FromPort: 443
           ToPort: 443
-          CidrIp: '0.0.0.0/0'
+          CidrIp: !Sub "${NATGatewayEIP}/32"
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: !Sub "${NATGatewayEIP}/32"
   KaliIAMRole:
     Type: AWS::IAM::Role
     Properties:

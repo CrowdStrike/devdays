@@ -1,6 +1,6 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'EKS cluster'
+Description: 'Creates the EKS cluster management plane'
 Parameters:
   PermissionsBoundary:
     Type: String

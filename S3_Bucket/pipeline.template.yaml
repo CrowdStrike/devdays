@@ -51,7 +51,7 @@ Parameters:
   EKSCodeBuildProjectName:
     Description: CodeBuild Project Name for deploying to EKS
     Type: String
-    Default: eks-deploy-devday # TODO: Give a proper name
+    Default: eks-deploy-devday
   EKSClusterName:
     Description: EKS Cluster name to deploy to
     Type: String
