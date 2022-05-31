@@ -263,3 +263,4 @@ Resources:
         KeyPairName: !Ref KeyPairName
         S3Bucket: !Ref S3Bucket
         NATGatewayEIP: !GetAtt VPCStack.Outputs.NATGatewayEIP
+        RemoteAccessCIDR: !Ref RemoteAccessCIDR
