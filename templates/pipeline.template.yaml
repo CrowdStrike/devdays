@@ -55,7 +55,11 @@ Parameters:
   EKSClusterName:
     Description: EKS Cluster name to deploy to
     Type: String
+  PodS3AccessRoleArn:
+    Description: IAM Role to associate with the Service Account
+    Type: String
 
+  # Cloudshare Permisions Boundary
   PermissionsBoundary:
     Type: String
     Default: 'BoundaryForAdministratorAccess'
@@ -433,4 +437,7 @@ Resources:
             Type: PLAINTEXT
           - Name: EKS_CLUSTER_NAME
             Value: !Ref EKSClusterName
+            Type: PLAINTEXT
+          - Name: SERVICE_ROLE_ARN
+            Value: !Ref PodS3AccessRoleArn
             Type: PLAINTEXT
