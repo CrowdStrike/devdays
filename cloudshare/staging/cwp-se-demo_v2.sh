@@ -50,7 +50,7 @@ api_keys(){
     echo '     | -------                           |----- | ----- |'
     echo '     | Sensor Download                   | x    |       |'
     echo '     | Falcon Images Download            | x    |       |'
-    echo '     | Falcon Falcon Container Image     | x    |   x   |'
+    echo '     | Falcon Container Image            | x    |   x   |'
     echo '     | -------                           |----- | ----- |'
     echo ''
     echo ' CS_CLOUD Should be one of the following us1, us2 or eu'

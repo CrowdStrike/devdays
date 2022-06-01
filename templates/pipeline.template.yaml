@@ -409,9 +409,11 @@ Resources:
             Type: PLAINTEXT
           - Name: FALCON_CLIENT_ID
             Value: !Ref SMFalconAPIKey
+            Value: 'FalconAPIKey:client_id'
             Type: SECRETS_MANAGER
           - Name: FALCON_CLIENT_SECRET
             Value: !Ref SMFalconAPIKey
+            Value: 'FalconAPIKey:client_secret'
             Type: SECRETS_MANAGER
 
   # AWS EKS CodeBuild Project
