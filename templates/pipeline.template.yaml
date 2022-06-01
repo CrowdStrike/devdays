@@ -10,7 +10,6 @@ Parameters:
   FalconClientID:
     Description: 'Client ID for the Falcon API'
     Type: String
-  
   FalconClientSecret:
     Description: 'Client Secret for the Falcon API'
     Type: String
@@ -81,7 +80,7 @@ Resources:
       SecretString: !Sub |
         {
           "client_id": "${FalconClientID}",
-          "client_secret": "${FalconClientSecret}"
+          "client_secret": "${FalconClientSecret}",
           "cs_cloud":"${CrowdStrikeCloud}"
         }
 
@@ -412,14 +411,21 @@ Resources:
             Value: !GetAtt ECRRepository.RepositoryUri
             Type: PLAINTEXT
           - Name: FALCON_CLIENT_ID
-            Value: 'FalconAPIKey:client_id'
+            Value: !Sub
+              - '${arn}:client_id'
+              - {arn: !Ref SMFalconAPIKey}
             Type: SECRETS_MANAGER
           - Name: FALCON_CLIENT_SECRET
-            Value: 'FalconAPIKey:client_secret'
+            Value: !Sub
+              - '${arn}:client_secret'
+              - {arn: !Ref SMFalconAPIKey}
             Type: SECRETS_MANAGER
           - Name: CS_CLOUD
-            Value: 'FalconAPIKey:cs_cloud'
+            Value: !Sub
+              - '${arn}:cs_cloud'
+              - {arn: !Ref SMFalconAPIKey}
             Type: SECRETS_MANAGER
+          
 
 
   # AWS EKS CodeBuild Project

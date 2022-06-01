@@ -1,9 +1,5 @@
 version: 0.2
 
-env:
-  secrets-manager:
-    FALCON_CLIENT_ID: "FalconAPIKey:client_id"
-    FALCON_CLIENT_SECRET: "FalconAPIKey:client_secret"
 phases:
   pre_build:
     commands:
