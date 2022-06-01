@@ -223,11 +223,11 @@ Outputs:
     Export:
       Name:
         Fn::Sub: "${AWS::StackName}::EKSName"
-  OIDCIssuerURL:
-    Value: !GetAtt Cluster.OIDCIssuerURL
+  OIDCIssuerURLWithoutProtocol:
+    Value: !Join [ '', !Split [ 'https://', !GetAtt Cluster.OIDCIssuerURL ] ]
     Export:
       Name:
-        Fn::Sub: "${AWS::StackName}::OIDCIssuerURL"
+        Fn::Sub: "${AWS::StackName}::OIDCIssuerURLWithoutProtocol"
   CAData:
     Value: !GetAtt Cluster.CertificateAuthorityData
 

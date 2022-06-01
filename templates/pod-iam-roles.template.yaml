@@ -1,0 +1,72 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Creates the IAM roles and policies for EKS Pods'
+Parameters:
+  PermissionsBoundary:
+    Type: String
+    Default: 'BoundaryForAdministratorAccess'
+  OIDCIssuerURLWithoutProtocol:
+    Type: String
+    Description: OIDC Issuer URL without protocol
+Conditions:
+  PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
+
+Resources:
+  PodS3BucketIAMRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks: [ EIAMPolicyWildcardResource ]
+          ignore_reasons:
+            EIAMPolicyWildcardResource: "resources are created dynamically by the k8s cloud controller, and aren't known at the time of policy creation"
+    Properties:
+      PermissionsBoundary:
+        Fn::If:
+          - PermissionsBoundary
+          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+          - Ref: AWS::NoValue
+      AssumeRolePolicyDocument: !Sub |
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Federated": "arn:${AWS::Partition}:iam::${AWS::AccountId}:oidc-provider/${OIDCIssuerURLWithoutProtocol}"
+              },
+              "Action": "sts:AssumeRoleWithWebIdentity",
+              "Condition": {
+                "StringEquals": {
+                  "${OIDCIssuerURLWithoutProtocol}:sub": "system:serviceaccount:default:pod-s3-access"
+                }
+              }
+            }
+          ]
+        }
+      Policies:
+        - PolicyName: pod-s3access-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: S3Write
+                Effect: Allow
+                Action:
+                  - s3:GetLifecycleConfiguration
+                  - s3:PutBucketOwnershipControls
+                  - s3:PutBucketAcl
+                  - s3:ListBucket
+                  - s3:ListAllMyBuckets
+                  - s3:GetBucketAcl
+                  - s3:PutBucketVersioning
+                Resource: arn:aws:s3:::*
+              - Sid: S3Get
+                Effect: Allow
+                Action:
+                  - s3:GetObjectAcl
+                  - s3:GetObject
+                  - s3:GetObjectVersionAcl
+                  - s3:PutObjectAcl
+                Resource: arn:aws:s3:::*/*
+Outputs:
+  PodS3AccessRoleArn:
+    Value: !GetAtt PodS3BucketIAMRole.Arn

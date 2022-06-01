@@ -181,12 +181,23 @@ Resources:
           SubnetPublic1: !GetAtt VPCStack.Outputs.SubnetPublic1
           SubnetPublic2: !GetAtt VPCStack.Outputs.SubnetPublic2
           EKSCodeBuildServiceRoleArn: !GetAtt SetupStack.Outputs.EKSCodeBuildServiceRoleArn
+  
+  PodIamRoleStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: EKSControlPlaneStack
+    Properties:
+      TemplateURL: !Sub 'https://${S3Bucket}.s3.amazonaws.com/pod-iam-roles.template.yaml'
+      Parameters:
+        PermissionsBoundary: !Ref PermissionsBoundary
+        OIDCIssuerURLWithoutProtocol: !GetAtt EKSControlPlaneStack.Outputs.OIDCIssuerURLWithoutProtocol
+
 
   CodePipelineStack:
     Type: AWS::CloudFormation::Stack
     DependsOn: 
       - SetupStack
       - EKSControlPlaneStack
+      - PodIamRoleStack
     Properties:
       TemplateURL: !Sub 'https://${S3Bucket}.s3.amazonaws.com/pipeline.template.yaml'
       Parameters:
@@ -196,6 +207,7 @@ Resources:
         S3CodeBucketKey: code.zip
         FalconClientID: !Ref FalconClientID
         FalconClientSecret: !Ref FalconClientSecret
+        PodS3AccessRoleArn: !GetAtt PodIamRoleStack.Outputs.PodS3AccessRoleArn
 
   EKSNodeGroup:
       Type: AWS::CloudFormation::Stack
@@ -225,7 +237,7 @@ Resources:
         TemplateURL: !Sub 'https://${S3Bucket}.s3.amazonaws.com/load-balancer-controller.yaml'
         Parameters:
           PermissionsBoundary: !Ref PermissionsBoundary
-          OIDCIssuerURLWithoutProtocol: !Join [ '', !Split [ 'https://', !GetAtt EKSControlPlaneStack.Outputs.OIDCIssuerURL ] ]
+          OIDCIssuerURLWithoutProtocol: !GetAtt EKSControlPlaneStack.Outputs.OIDCIssuerURLWithoutProtocol
           EksClusterName: !Ref EksClusterName
           VpcId: !GetAtt VPCStack.Outputs.VpcId
 
