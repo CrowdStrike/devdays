@@ -32,6 +32,9 @@ Metadata:
       ExternalID:
         default: External ID Enter 6 or more characters alphanumeric without white space
 Parameters:
+  CrowdStrikeCloud:
+    Type: String
+    AllowedValues: ['us-1','us-2','eu-1']
   PermissionsBoundary:
     Type: String
     Default: 'BoundaryForAdministratorAccess'
@@ -208,6 +211,7 @@ Resources:
         FalconClientID: !Ref FalconClientID
         FalconClientSecret: !Ref FalconClientSecret
         PodS3AccessRoleArn: !GetAtt PodIamRoleStack.Outputs.PodS3AccessRoleArn
+        CrowdStrikeCloud: !Ref CrowdStrikeCloud
 
   EKSNodeGroup:
       Type: AWS::CloudFormation::Stack

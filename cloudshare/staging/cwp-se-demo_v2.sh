@@ -17,7 +17,7 @@ env_up(){
     aws s3 cp . s3://$BUCKET_NAME --recursive
     echo -e "$LB\n"
     echo -e "Standing up environment$NC"
-    aws cloudformation create-stack --stack-name cwp-demo-stack --template-url https://$BUCKET_NAME.s3-$REGION_CODE.amazonaws.com/cwp-lab-entrypoint.yaml --parameters  ParameterKey=FalconClientID,ParameterValue=$CLIENT_ID ParameterKey=FalconClientSecret,ParameterValue=$CLIENT_SECRET ParameterKey=S3Bucket,ParameterValue=$BUCKET_NAME  --capabilities CAPABILITY_NAMED_IAM CAPABILITY_IAM CAPABILITY_AUTO_EXPAND --region $REGION_CODE
+    aws cloudformation create-stack --stack-name cwp-demo-stack --template-url https://$BUCKET_NAME.s3-$REGION_CODE.amazonaws.com/cwp-lab-entrypoint.yaml --parameters  ParameterKey=FalconClientID,ParameterValue=$CLIENT_ID ParameterKey=FalconClientSecret,ParameterValue=$CLIENT_SECRET ParameterKey=S3Bucket,ParameterValue=$BUCKET_NAME ParameterKey=CrowdStrikeCloud,ParameterValue=$CS_CLOUD --capabilities CAPABILITY_NAMED_IAM CAPABILITY_IAM CAPABILITY_AUTO_EXPAND --region $REGION_CODE
     echo -e "The Cloudformation stack will take 20-30 minutes to complete$NC"
     echo -e "\n\nCheck the status at any time with the command \n\naws cloudformation describe-stacks --stack-name cwp-demo-stack --region $REGION_CODE$NC\n\n"
     sleep 5
@@ -53,7 +53,7 @@ api_keys(){
     echo '     | Falcon Container Image            | x    |   x   |'
     echo '     | -------                           |----- | ----- |'
     echo ''
-    echo ' CS_CLOUD Should be one of the following us1, us2 or eu'
+    echo ' CS_CLOUD Should be one of the following us-1, us-2 or eu-1'
     echo -e "$NC"
 }
 env_destroyed(){

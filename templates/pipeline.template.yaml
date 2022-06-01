@@ -4,6 +4,9 @@ Description: 'Creates a CI/CD pipeline for the vulnerable app.'
 Parameters:
 
   # AWS Secrets Manager
+  CrowdStrikeCloud:
+    Description: 'CrowdStrike Cloud'
+    Type: String
   FalconClientID:
     Description: 'Client ID for the Falcon API'
     Type: String
@@ -79,6 +82,7 @@ Resources:
         {
           "client_id": "${FalconClientID}",
           "client_secret": "${FalconClientSecret}"
+          "cs_cloud":"${CrowdStrikeCloud}"
         }
 
   # AWS ECR Repository
@@ -408,13 +412,15 @@ Resources:
             Value: !GetAtt ECRRepository.RepositoryUri
             Type: PLAINTEXT
           - Name: FALCON_CLIENT_ID
-            Value: !Ref SMFalconAPIKey
             Value: 'FalconAPIKey:client_id'
             Type: SECRETS_MANAGER
           - Name: FALCON_CLIENT_SECRET
-            Value: !Ref SMFalconAPIKey
             Value: 'FalconAPIKey:client_secret'
             Type: SECRETS_MANAGER
+          - Name: CS_CLOUD
+            Value: 'FalconAPIKey:cs_cloud'
+            Type: SECRETS_MANAGER
+
 
   # AWS EKS CodeBuild Project
   EKSCodeBuildProject:
