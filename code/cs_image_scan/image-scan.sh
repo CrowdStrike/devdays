@@ -10,4 +10,4 @@ pip3 install docker requests
 
 echo "Running CS Image Scan script"
 
-python3 cs_scanimage.py -r $REPOSITORY_URI -c us-2
+python3 ./cs_image_scan/cs_scanimage.py -r $REPOSITORY_URI -t latest -s 25000 -c $CS_CLOUD
