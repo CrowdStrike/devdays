@@ -144,6 +144,9 @@ Parameters:
   FalconClientSecret:
     Description: 'Client Secret for the Falcon API'
     Type: String
+  FalconCID:
+    Description: 'Customer CID for the Falcon Installation'
+    Type: String
 
 Conditions:
   PermissionsBoundary: !Not [!Equals [!Ref PermissionsBoundary, '']]
@@ -210,6 +213,7 @@ Resources:
         S3CodeBucketKey: code.zip
         FalconClientID: !Ref FalconClientID
         FalconClientSecret: !Ref FalconClientSecret
+        FalconCID: !Ref FalconCID
         PodS3AccessRoleArn: !GetAtt PodIamRoleStack.Outputs.PodS3AccessRoleArn
         CrowdStrikeCloud: !Ref CrowdStrikeCloud
 

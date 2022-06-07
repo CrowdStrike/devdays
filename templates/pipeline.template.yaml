@@ -3,6 +3,11 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Creates a CI/CD pipeline for the vulnerable app.'
 Parameters:
 
+  SensorCodeBuildProjectName:
+    Description: CodeBuild Project Name for uploading sensor image to ECR
+    Type: String
+    Default: sensor-image-import
+
   # AWS Secrets Manager
   CrowdStrikeCloud:
     Description: 'CrowdStrike Cloud'
@@ -12,6 +17,9 @@ Parameters:
     Type: String
   FalconClientSecret:
     Description: 'Client Secret for the Falcon API'
+    Type: String
+  FalconCID:
+    Description: 'Customer CID for the Falcon Installation'
     Type: String
 
   # AWS ECR Repository
@@ -71,7 +79,12 @@ Conditions:
 
 Resources:
 
-  # AWS Secrets Manager Secrets
+  ################################
+  #                              #
+  #        Falcon Secrets        #
+  #                              #
+  ################################
+
   SMFalconAPIKey:
     Type: AWS::SecretsManager::Secret
     Properties:
@@ -81,17 +94,21 @@ Resources:
         {
           "client_id": "${FalconClientID}",
           "client_secret": "${FalconClientSecret}",
+          "cid": "${FalconCID}",
           "cs_cloud":"${CrowdStrikeCloud}"
         }
 
-  # AWS ECR Repository
+  ################################
+  #                              #
+  #      App Build Pipeline      #
+  #                              #
+  ################################
+
   ECRRepository:
     Type: AWS::ECR::Repository
     Properties: 
       RepositoryName: !Ref ECRRepositoryName
 
-
-  # AWS CodeCommit Repository
   CodeCommitRepository:
     Type: AWS::CodeCommit::Repository
     Properties: 
@@ -102,8 +119,7 @@ Resources:
           Key: !Ref S3CodeBucketKey
       RepositoryDescription: !Ref RepositoryDescription
       RepositoryName: !Ref RepositoryName
-  
-  # AWS CodePipeline Pipeline    
+
   CodePipelineArtifactStoreBucket:
     Type: 'AWS::S3::Bucket'
   CodePipelineArtifactStoreBucketPolicy:
@@ -139,6 +155,7 @@ Resources:
             Condition:
               Bool:
                 'aws:SecureTransport': false
+
   AmazonCloudWatchEventRole:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -171,6 +188,17 @@ Resources:
                     - !Ref 'AWS::AccountId'
                     - ':'
                     - !Ref AppPipeline
+              - Effect: Allow
+                Action: 'codepipeline:StartPipelineExecution'
+                Resource: !Join 
+                  - ''
+                  - - 'arn:aws:codepipeline:'
+                    - !Ref 'AWS::Region'
+                    - ':'
+                    - !Ref 'AWS::AccountId'
+                    - ':'
+                    - !Ref SensorImportPipeline
+
   AmazonCloudWatchEventRule:
     Type: 'AWS::Events::Rule'
     Properties:
@@ -209,61 +237,19 @@ Resources:
             - AmazonCloudWatchEventRole
             - Arn
           Id: codepipeline-AppPipeline
-  AppPipeline:
-    Type: 'AWS::CodePipeline::Pipeline'
-    Properties:
-      Name: codecommit-events-pipeline
-      RoleArn: !GetAtt 
-        - CodePipelineServiceRole
-        - Arn
-      Stages:
-        - Name: Source
-          Actions:
-            - Name: SourceAction
-              ActionTypeId:
-                Category: Source
-                Owner: AWS
-                Version: "1"
-                Provider: CodeCommit
-              OutputArtifacts:
-                - Name: SourceOutput
-              Configuration:
-                BranchName: !Ref BranchName
-                RepositoryName: !Ref RepositoryName
-                PollForSourceChanges: false
-              RunOrder: 1
-        - Name: Build
-          Actions:
-            - Name: Build
-              ActionTypeId:
-                Category: Build
-                Owner: AWS
-                Version: '1'
-                Provider: CodeBuild
-              Configuration:
-                ProjectName: !Ref ECRCodeBuildProject
-              InputArtifacts:
-                - Name: SourceOutput
-              OutputArtifacts:
-                - Name: BuildOutput
-              RunOrder: 1
-        - Name: Deploy
-          Actions:
-            - Name: Deploy
-              ActionTypeId:
-                Category: Build
-                Owner: AWS
-                Version: '1'
-                Provider: CodeBuild
-              Configuration:
-                ProjectName: !Ref EKSCodeBuildProject
-              InputArtifacts:
-                - Name: SourceOutput
-              RunOrder: 1
+        - Arn: !Join 
+            - ''
+            - - 'arn:aws:codepipeline:'
+              - !Ref 'AWS::Region'
+              - ':'
+              - !Ref 'AWS::AccountId'
+              - ':'
+              - !Ref SensorImportPipeline
+          RoleArn: !GetAtt 
+            - AmazonCloudWatchEventRole
+            - Arn
+          Id: codepipeline-SensorImportPipeline
 
-      ArtifactStore:
-        Type: S3
-        Location: !Ref CodePipelineArtifactStoreBucket
   CodePipelineServiceRole:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -327,20 +313,65 @@ Resources:
                 Resource: '*'
               - Effect: Allow
                 Action:
-                  - 'elasticbeanstalk:*'
                   - 'ec2:*'
-                  - 'elasticloadbalancing:*'
-                  - 'autoscaling:*'
                   - 'cloudwatch:*'
                   - 's3:*'
-                  - 'sns:*'
-                  - 'cloudformation:*'
-                  - 'rds:*'
-                  - 'sqs:*'
-                  - 'ecs:*'
                 Resource: '*'
+  AppPipeline:
+    Type: 'AWS::CodePipeline::Pipeline'
+    Properties:
+      Name: codecommit-events-pipeline
+      RoleArn: !GetAtt 
+        - CodePipelineServiceRole
+        - Arn
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: SourceAction
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Version: "1"
+                Provider: CodeCommit
+              OutputArtifacts:
+                - Name: SourceOutput
+              Configuration:
+                BranchName: !Ref BranchName
+                RepositoryName: !Ref RepositoryName
+                PollForSourceChanges: false
+              RunOrder: 1
+        - Name: Build
+          Actions:
+            - Name: Build
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: '1'
+                Provider: CodeBuild
+              Configuration:
+                ProjectName: !Ref ECRCodeBuildProject
+              InputArtifacts:
+                - Name: SourceOutput
+              OutputArtifacts:
+                - Name: BuildOutput
+              RunOrder: 1
+        - Name: Deploy
+          Actions:
+            - Name: Deploy
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: '1'
+                Provider: CodeBuild
+              Configuration:
+                ProjectName: !Ref EKSCodeBuildProject
+              InputArtifacts:
+                - Name: SourceOutput
+              RunOrder: 1
+      ArtifactStore:
+        Type: S3
+        Location: !Ref CodePipelineArtifactStoreBucket
 
-  # AWS ECR CodeBuild Project
   ECRCodeBuildServiceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -425,10 +456,7 @@ Resources:
               - '${arn}:cs_cloud'
               - {arn: !Ref SMFalconAPIKey}
             Type: SECRETS_MANAGER
-          
 
-
-  # AWS EKS CodeBuild Project
   EKSCodeBuildProject:
     Type: AWS::CodeBuild::Project
     Properties:
@@ -454,4 +482,146 @@ Resources:
             Type: PLAINTEXT
           - Name: SERVICE_ROLE_ARN
             Value: !Ref PodS3AccessRoleArn
+            Type: PLAINTEXT
+
+################################
+#                              #
+#    Sensor Import Pipeline    #
+#                              #
+################################
+  SensorECRRepository:
+    Type: AWS::ECR::Repository
+    Properties: 
+      RepositoryName: 'falcon-sensor'
+
+  SensorImportPipeline:
+    Type: 'AWS::CodePipeline::Pipeline'
+    Properties:
+      Name: sensor-import-pipeline
+      RoleArn: !GetAtt 
+        - CodePipelineServiceRole
+        - Arn
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: SourceAction
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Version: "1"
+                Provider: CodeCommit
+              OutputArtifacts:
+                - Name: SourceOutput
+              Configuration:
+                BranchName: !Ref BranchName
+                RepositoryName: !Ref RepositoryName
+                PollForSourceChanges: false
+              RunOrder: 1
+        - Name: Build
+          Actions:
+            - Name: 'Build'
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: '1'
+                Provider: CodeBuild
+              Configuration:
+                ProjectName: !Ref SensorCodeBuildProjectName
+              InputArtifacts:
+                - Name: SourceOutput
+              OutputArtifacts:
+                - Name: BuildOutput
+              RunOrder: 1
+      ArtifactStore:
+        Type: S3
+        Location: !Ref CodePipelineArtifactStoreBucket
+
+  SensorCodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      PermissionsBoundary:
+        Fn::If:
+          - PermissionsBoundary
+          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+          - Ref: AWS::NoValue
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - sts:AssumeRole
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+  SensorCodeBuildServicePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: SensorCodeBuildServicePolicy
+      Roles:
+        - !Ref SensorCodeBuildServiceRole
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: "arn:aws:logs:*:*:*"
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:GetObjectVersion
+              - s3:PutObject
+            Resource:
+              - "*"
+          - Effect: Allow
+            Action:
+              - ecr:*
+            Resource:
+              - "*"
+          - Effect: Allow
+            Action:
+              - secretsmanager:*
+            Resource:
+              - !Ref SMFalconAPIKey
+  SensorCodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Ref SensorCodeBuildProjectName
+      ServiceRole: !Ref SensorCodeBuildServiceRole
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: sensor-buildspec.yaml
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: 'aws/codebuild/standard:5.0'
+        ImagePullCredentialsType: 'CODEBUILD'
+        PrivilegedMode: true
+        Type: LINUX_CONTAINER
+        EnvironmentVariables:
+          - Name: FALCON_CLIENT_ID
+            Value: !Sub
+              - '${arn}:client_id'
+              - {arn: !Ref SMFalconAPIKey}
+            Type: SECRETS_MANAGER
+          - Name: FALCON_CLIENT_SECRET
+            Value: !Sub
+              - '${arn}:client_secret'
+              - {arn: !Ref SMFalconAPIKey}
+            Type: SECRETS_MANAGER
+          - Name: FALCON_CID
+            Value: !Sub
+              - '${arn}:cid'
+              - {arn: !Ref SMFalconAPIKey}
+            Type: SECRETS_MANAGER
+          - Name: CS_CLOUD
+            Value: !Sub
+              - '${arn}:cs_cloud'
+              - {arn: !Ref SMFalconAPIKey}
+            Type: SECRETS_MANAGER
+          - Name: REPO_URI
+            Value: !GetAtt SensorECRRepository.RepositoryUri
             Type: PLAINTEXT
