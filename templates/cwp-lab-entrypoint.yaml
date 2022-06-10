@@ -89,7 +89,7 @@ Parameters:
 
   Prefix:
     Type: String
-    Default: justin-test
+    Default: lab
 
   S3Bucket:
     Type: String
@@ -144,6 +144,14 @@ Parameters:
   FalconClientSecret:
     Description: 'Client Secret for the Falcon API'
     Type: String
+  FalconCID:
+    Description: 'Customer CID for the Falcon Installation'
+    Type: String
+
+  SensorECRRepositoryName:
+    Description: 'ECR repository name for the falcon-sensor image'
+    Type: String
+    Default: 'falcon-sensor'
 
 Conditions:
   PermissionsBoundary: !Not [!Equals [!Ref PermissionsBoundary, '']]
@@ -210,8 +218,10 @@ Resources:
         S3CodeBucketKey: code.zip
         FalconClientID: !Ref FalconClientID
         FalconClientSecret: !Ref FalconClientSecret
+        FalconCID: !Ref FalconCID
         PodS3AccessRoleArn: !GetAtt PodIamRoleStack.Outputs.PodS3AccessRoleArn
         CrowdStrikeCloud: !Ref CrowdStrikeCloud
+        SensorECRRepositoryName: !Ref SensorECRRepositoryName
 
   EKSNodeGroup:
       Type: AWS::CloudFormation::Stack

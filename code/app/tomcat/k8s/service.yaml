@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: tomcat
+  name: webapp
 spec:
   ports:
     - port: 80
@@ -10,4 +10,4 @@ spec:
       protocol: TCP
   type: NodePort
   selector:
-    app: tomcat
+    app: webapp
