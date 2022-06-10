@@ -26,6 +26,10 @@ Parameters:
   ECRRepositoryName:
     Type: String
     Default: 'webapp'
+  
+  SensorECRRepositoryName:
+    Type: String
+    Default: 'falcon-sensor'
 
   # AWS CodeCommit Repository
   BranchName:
@@ -492,7 +496,7 @@ Resources:
   SensorECRRepository:
     Type: AWS::ECR::Repository
     Properties: 
-      RepositoryName: 'falcon-sensor'
+      RepositoryName: !Ref SensorECRRepositoryName
 
   SensorImportPipeline:
     Type: 'AWS::CodePipeline::Pipeline'
