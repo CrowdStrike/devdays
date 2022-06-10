@@ -1,14 +1,14 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: "tomcat-ingress"
+  name: "webapp-ingress"
   annotations:
     kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
-    alb.ingress.kubernetes.io/conditions.tomcat: >
+    alb.ingress.kubernetes.io/conditions.webapp: >
       [{"field":"http-request-method","httpRequestMethodConfig":{"Values":["GET", "PUT"]}}]
   labels:
-    app: tomcat
+    app: webapp
 spec:
   rules:
     - http:
@@ -17,6 +17,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: "tomcat"
+                name: "webapp"
                 port:
                   number: 80

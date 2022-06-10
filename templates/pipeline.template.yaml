@@ -25,7 +25,7 @@ Parameters:
   # AWS ECR Repository
   ECRRepositoryName:
     Type: String
-    Default: 'log4j-tomcat'
+    Default: 'webapp'
 
   # AWS CodeCommit Repository
   BranchName:
@@ -35,7 +35,7 @@ Parameters:
   RepositoryName:
     Description: CodeCommit repository name
     Type: String
-    Default: vulnerableapp
+    Default: webapp
   RepositoryDescription:
     Description: CodeCommit repository description
     Type: String
@@ -52,7 +52,7 @@ Parameters:
   ECRCodeBuildProjectName:
     Description: CodeBuild Project Name for building the app image
     Type: String
-    Default: ecrCodeBuildProject
+    Default: webapp-image-build
 
   # AWS EKS CodeBuild Project
   EKSCodeBuildServiceRoleArn:
@@ -61,7 +61,7 @@ Parameters:
   EKSCodeBuildProjectName:
     Description: CodeBuild Project Name for deploying to EKS
     Type: String
-    Default: eks-deploy-devday
+    Default: eks-webapp-deploy
   EKSClusterName:
     Description: EKS Cluster name to deploy to
     Type: String
@@ -320,7 +320,7 @@ Resources:
   AppPipeline:
     Type: 'AWS::CodePipeline::Pipeline'
     Properties:
-      Name: codecommit-events-pipeline
+      Name: webapp-deploy-pipeline
       RoleArn: !GetAtt 
         - CodePipelineServiceRole
         - Arn
