@@ -7,6 +7,8 @@ metadata:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/conditions.webapp: >
       [{"field":"http-request-method","httpRequestMethodConfig":{"Values":["GET", "PUT"]}}]
+    alb.ingress.kubernetes.io/target-group-attributes: stickiness.enabled=true,stickiness.lb_cookie.duration_seconds=86400
+    alb.ingress.kubernetes.io/target-type: ip
   labels:
     app: webapp
 spec:
