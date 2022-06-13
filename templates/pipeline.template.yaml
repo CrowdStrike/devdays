@@ -530,7 +530,7 @@ Resources:
                 Version: '1'
                 Provider: CodeBuild
               Configuration:
-                ProjectName: !Ref SensorCodeBuildProjectName
+                ProjectName: !Ref SensorCodeBuildProject
               InputArtifacts:
                 - Name: SourceOutput
               OutputArtifacts:
