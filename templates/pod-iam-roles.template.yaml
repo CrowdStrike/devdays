@@ -54,6 +54,7 @@ Resources:
                   - s3:GetLifecycleConfiguration
                   - s3:PutBucketOwnershipControls
                   - s3:PutBucketAcl
+                  - s3:PutBucketPolicy
                   - s3:ListBucket
                   - s3:ListAllMyBuckets
                   - s3:GetBucketAcl
@@ -65,6 +66,7 @@ Resources:
                   - s3:GetObjectAcl
                   - s3:GetObject
                   - s3:GetObjectVersionAcl
+                  - s3:GetBucketPolicy
                   - s3:PutObjectAcl
                 Resource: arn:aws:s3:::*/*
 Outputs:
