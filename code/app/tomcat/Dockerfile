@@ -1,6 +1,4 @@
-FROM public.ecr.aws/ubuntu/ubuntu:18.04
-RUN apt-get -yqq update
-RUN apt-get -yqq install openjdk-8-jdk wget net-tools
+FROM ghcr.io/ffalor/ubuntu-xenial-tomcat:main
 RUN mkdir /opt/tomcat \
 && cd /opt/tomcat \
 && wget -q http://provisioning.aws.cs-labs.net/workshop/cwp/files/apache-tomcat-8.0.32.tar.gz -O apache-tomcat-8.0.32.tar.gz \
