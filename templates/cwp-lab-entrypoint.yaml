@@ -220,6 +220,7 @@ Resources:
         FalconClientSecret: !Ref FalconClientSecret
         FalconCID: !Ref FalconCID
         PodS3AccessRoleArn: !GetAtt PodIamRoleStack.Outputs.PodS3AccessRoleArn
+        FalconFigAccessRoleArn: !GetAtt PodIamRoleStack.Outputs.FalconFigAccessRoleArn
         CrowdStrikeCloud: !Ref CrowdStrikeCloud
         SensorECRRepositoryName: !Ref SensorECRRepositoryName
 

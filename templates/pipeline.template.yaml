@@ -21,6 +21,9 @@ Parameters:
   FalconCID:
     Description: 'Customer CID for the Falcon Installation'
     Type: String
+  FalconFigAccessRoleArn:
+    Description: 'Falcon IAM Role to be used for fig.'
+    Type: String
 
   # AWS ECR Repository
   ECRRepositoryName:
@@ -99,7 +102,8 @@ Resources:
           "client_id": "${FalconClientID}",
           "client_secret": "${FalconClientSecret}",
           "cid": "${FalconCID}",
-          "cs_cloud":"${CrowdStrikeCloud}"
+          "cs_cloud":"${CrowdStrikeCloud}",
+          "FalconFigAccessRoleArn": "${FalconFigAccessRoleArn}"
         }
 
   ################################
