@@ -2,36 +2,35 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Creates the EKS cluster management plane'
 Parameters:
+  EnvAlias:
+    Type: String
+    Default: ''
+  EnvHash:
+    Type: String
+    Default: ''
   PermissionsBoundary:
     Type: String
-    Default: 'BoundaryForAdministratorAccess'
-
-  EksClusterName:
-    Type: String
-    Default: CRWD-EKS-Cluster
-  Username:
-    Type: String
-    Default: "wus-cloudshare"
-    Description: IAM User who will be mapped system:masters
-  VpcId:
-    Type: String
+    Default: ''
   BastionRole:
     Type: String
-
+  VpcId:
+    Type: String
   SubnetPrivate1:
     Type: String
   SubnetPrivate2:
     Type: String
-
   SubnetPublic1:
     Type: String
   SubnetPublic2:
     Type: String
-  
   EKSCodeBuildServiceRoleArn:
     Type: String
-
-
+  EKSQSExtentionRoleArn:
+    Type: String
+  Username:
+    Type: String
+    Default: "wus-cloudshare"
+    Description: IAM User who will be mapped system:masters
 Conditions:
   PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
 
@@ -64,6 +63,7 @@ Resources:
       ManagedPolicyArns:
         - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonEKSClusterPolicy'
         - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonEKSServicePolicy'
+
   Cluster:
     Type: AWSQS::EKS::Cluster
     Metadata:
@@ -71,9 +71,7 @@ Resources:
         config:
           ignore_checks: [ E3001 ]
     Properties:
-#      KubernetesNetworkConfig:
-#        IpFamily: ipv4
-      Name: !Ref EksClusterName
+      Name: !Sub '${EnvAlias}-EKS-Cluster'
       ResourcesVpcConfig:
         EndpointPrivateAccess: true
         EndpointPublicAccess: true
@@ -82,10 +80,8 @@ Resources:
         SubnetIds:
           - !Ref SubnetPublic1
           - !Ref SubnetPublic2
-
           - !Ref SubnetPrivate1
           - !Ref SubnetPrivate2
-
       RoleArn: !GetAtt serviceRole.Arn
       Version: '1.21'
       KubernetesApiAccess:
@@ -103,12 +99,10 @@ Resources:
           - Arn: !Ref EKSCodeBuildServiceRoleArn
             Username: EKSCodeDeploy
             Groups: [ 'system:masters' ]
-#  CleanupLoadBalancers:
-#    Type: Custom::CleanupLoadBalancers
-#    Properties:
-#      Name: !Sub "${AWS::StackName}-CleanupLoadBalancers"
-#      ServiceToken: !Sub 'arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:CleanupLoadBalancersLambda'
-#      ClusterName: !Ref EksClusterName
+          - Arn: !Ref EKSQSExtentionRoleArn
+            Username: EKSK8sExtension
+            Groups: [ 'system:masters' ]
+
   ClusterOIDCProvider:
     Type: AWS::IAM::OIDCProvider
     Metadata:
@@ -202,6 +196,119 @@ Resources:
         Fn::Sub: "${AWS::StackName}-PolicyELBPermissions"
       Roles:
       - Ref: serviceRole
+  CleanUpLoadBalancerResource:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt CleanUpLoadBalancerFunction.Arn
+      aws_region: !Ref "AWS::Region"
+      aws_account: !Ref "AWS::AccountId"
+      cluster_name: !Ref Cluster
+  CleanupLoadBalancersRole:
+    Type: AWS::IAM::Role
+    Properties:
+      PermissionsBoundary:
+        Fn::If:
+          - PermissionsBoundary
+          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+          - Ref: AWS::NoValue
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+        Version: '2012-10-17'
+      Path: /
+      Policies:
+        - PolicyName: LambdaRole
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource: !Sub 'arn:${AWS::Partition}:logs:*:*:*'
+              - Action:
+                  - elasticloadbalancing:DescribeLoadBalancers
+                  - elasticloadbalancing:DescribeTags
+                  - elasticloadbalancing:DeleteLoadBalancer
+                  - ec2:DescribeTags
+                  - ec2:DeleteSecurityGroup
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:DeleteNetworkInterface
+                  - ec2:DetachNetworkInterface
+                  - ec2:DescribeSecurityGroups
+                  - ec2:RevokeSecurityGroupEgress
+                  - ec2:RevokeSecurityGroupIngress
+                Effect: Allow
+                Resource: '*'
+  CleanUpLoadBalancerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: Called on stack deletion. Removes objects from ECR and S3 to enabled stack deletion to complete
+      Handler: index.handler
+      Runtime: python3.8
+      Role: !GetAtt CleanupLoadBalancersRole.Arn
+      Timeout: 240
+      Code:
+        ZipFile: |
+          import json
+          import logging
+          import boto3
+          import cfnresponse
+          
+          logger = logging.getLogger()
+          logger.setLevel(logging.DEBUG)
+          
+          def delete_k8s_loadbalancer(eks_cluster_name, region):
+              lbs_to_remove=[]
+              
+              elb = boto3.client('elbv2', region_name=region)
+              response=elb.describe_load_balancers()
+              logger.debug("lb describe {}".format(response))
+              for lb in response['LoadBalancers']:
+                  lbarn= lb.get('LoadBalancerArn')
+                  try:
+                      lb_data=elb.describe_tags(ResourceArns=[lbarn])
+                      tags = lb_data['TagDescriptions'][0]['Tags']
+                      for tag in tags:
+                          if tag["Key"] == 'elbv2.k8s.aws/cluster' and tag['Value'] == eks_cluster_name:
+                              lbs_to_remove.append(lbarn) 
+                              logger.info("LoadBalancerArn list {}".format(lbs_to_remove))
+                      for lb in lbs_to_remove:
+                          logger.info("Removing elb {}".format(lb))
+                          elb.delete_load_balancer(LoadBalancerArn=lb)
+                  except Exception as apierror:
+                      logger.debug(apierror)
+                      pass
+          
+          
+          
+          
+          def handler(event, context):
+              # make sure we send a failure to CloudFormation success
+              logger.debug('Received event:{}'.format(json.dumps(event)))
+              status = cfnresponse.SUCCESS
+              # Delete the repositories int the list
+              try:
+                  cluster_name = event['ResourceProperties']['cluster_name']
+                  aws_account = event['ResourceProperties']['aws_account']
+                  aws_region = event['ResourceProperties']['aws_region']
+                  if event['RequestType'] == 'Delete':
+                      delete_k8s_loadbalancer(cluster_name, aws_region)
+                      
+              except Exception as error:
+                  logger.error('Exception: {}'.format(error))
+              finally:
+                  logger.error('Finish: ')
+                  pass
+                  cfnresponse.send(event, context, status, {}, None)
+
+
 Outputs:
   EksArn:
     Value: !GetAtt Cluster.Arn
@@ -218,7 +325,7 @@ Outputs:
     Export:
       Name:
         Fn::Sub: "${AWS::StackName}::ClusterSecurityGroupId"
-  EKSName:
+  UniqueClusterName:
     Value: !Ref Cluster
     Export:
       Name:

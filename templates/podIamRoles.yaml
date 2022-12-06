@@ -1,12 +1,20 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Creates the IAM roles and policies for EKS Pods'
+
 Parameters:
+  EnvAlias:
+    Type: String
+    Default: ''
+  EnvHash:
+    Type: String
+    Default: ''
   PermissionsBoundary:
     Type: String
-    Default: 'BoundaryForAdministratorAccess'
+    Default: ''
   OIDCIssuerURLWithoutProtocol:
     Type: String
     Description: OIDC Issuer URL without protocol
+
 Conditions:
   PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
 
@@ -52,6 +60,8 @@ Resources:
                 Effect: Allow
                 Action:
                   - s3:GetLifecycleConfiguration
+                  - s3:GetBucketLogging
+                  - s3:PutBucketLogging
                   - s3:PutBucketOwnershipControls
                   - s3:PutBucketAcl
                   - s3:PutBucketPolicy
@@ -70,52 +80,6 @@ Resources:
                   - s3:PutObjectAcl
                 Resource: arn:aws:s3:::*/*
 
-  FalconFigIAMRole:
-    Type: AWS::IAM::Role
-    Metadata:
-      cfn-lint:
-        config:
-          ignore_checks: [ EIAMPolicyWildcardResource ]
-          ignore_reasons:
-            EIAMPolicyWildcardResource: "resources are created dynamically by the k8s cloud controller, and aren't known at the time of policy creation"
-    Properties:
-      PermissionsBoundary:
-        Fn::If:
-          - PermissionsBoundary
-          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
-          - Ref: AWS::NoValue
-      AssumeRolePolicyDocument: !Sub |
-        {
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Effect": "Allow",
-              "Principal": {
-                "Federated": "arn:${AWS::Partition}:iam::${AWS::AccountId}:oidc-provider/${OIDCIssuerURLWithoutProtocol}"
-              },
-              "Action": "sts:AssumeRoleWithWebIdentity",
-              "Condition": {
-                "StringEquals": {
-                  "${OIDCIssuerURLWithoutProtocol}:sub": "system:serviceaccount:falcon-integration-gateway:falcon-integration-gateway"
-                }
-              }
-            }
-          ]
-        }
-      Policies:
-        - PolicyName: falcon-fig-policy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Sid: SecurityHub
-                Effect: Allow
-                Action:
-                  - securityhub:*
-                Resource: '*'
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess
 Outputs:
   PodS3AccessRoleArn:
     Value: !GetAtt PodS3BucketIAMRole.Arn
-  FalconFigAccessRoleArn:
-    Value: !GetAtt FalconFigIAMRole.Arn

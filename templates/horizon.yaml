@@ -1,0 +1,1147 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Horizon SE Workshops
+
+Parameters:
+  EnvAlias:
+    Type: String
+    Default: ''
+  EnvHash:
+    Type: String
+    Default: ''
+  PermissionsBoundary:
+    Type: String
+    Default: ''
+  CSCloud:
+    Type: String
+    AllowedValues:
+      - 'us-1'
+      - 'us-2'
+      - 'eu-1'
+  S3Bucket:
+    Type: String
+    Description: Bucket for lambda files
+    Default: ''
+  S3Prefix:
+    Type: String
+    Description: path to objects
+    Default: ''  
+  FalconClientId:
+    Description: Falcon OAuth2 Client ID.
+    Type: String
+    NoEcho: 'true'
+  FalconClientSecret:
+    Description: Falcon Oath2 API secret.
+    Type: String
+    NoEcho: 'true'
+  EnableIOA:
+    Type: String
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: true
+  DBClass:
+    Description: Database instance class
+    Type: String
+    Default: db.t2.small
+    AllowedValues:
+      - db.t1.micro
+      - db.m1.small
+      - db.m1.medium
+      - db.m1.large
+      - db.m1.xlarge
+      - db.m2.xlarge
+      - db.m2.2xlarge
+      - db.m2.4xlarge
+      - db.m3.medium
+      - db.m3.large
+      - db.m3.xlarge
+      - db.m3.2xlarge
+      - db.m4.large
+      - db.m4.xlarge
+      - db.m4.2xlarge
+      - db.m4.4xlarge
+      - db.m4.10xlarge
+      - db.r3.large
+      - db.r3.xlarge
+      - db.r3.2xlarge
+      - db.r3.4xlarge
+      - db.r3.8xlarge
+      - db.m2.xlarge
+      - db.m2.2xlarge
+      - db.m2.4xlarge
+      - db.cr1.8xlarge
+      - db.t2.micro
+      - db.t2.small
+      - db.t2.medium
+      - db.t2.large
+    ConstraintDescription: must select a valid database instance type.
+  DBName:
+    Default: wordpressdb
+    Description: The WordPress database name
+    Type: String
+    MinLength: '1'
+    MaxLength: '64'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: must begin with a letter and contain only alphanumeric
+      characters.
+  DBUser:
+    Default: admin
+    Description: The WordPress database admin account username
+    Type: String
+    MinLength: '1'
+    MaxLength: '16'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: must begin with a letter and contain only alphanumeric
+      characters.
+  DBPassword:
+    Default: Password123
+    NoEcho: 'true'
+    Description: The WordPress database admin account password
+    Type: String
+    MinLength: '8'
+    MaxLength: '41'
+    AllowedPattern: '[a-zA-Z0-9]*'
+    ConstraintDescription: must contain only alphanumeric characters.
+  DBAllocatedStorage:
+    Default: '5'
+    Description: The size of the database (Gb)
+    Type: Number
+    MinValue: '5'
+    MaxValue: '1024'
+    ConstraintDescription: must be between 5 and 1024Gb.
+  WindowsAMI:
+    Description: The latest AMI ID for Windows 2016 Core in English
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    AllowedValues:
+      - /aws/service/ami-windows-latest/Windows_Server-2016-English-Full-Base
+      - /aws/service/ami-windows-latest/Windows_Server-2012-R2_RTM-English-64Bit-Base
+      - /aws/service/ami-windows-latest/Windows_Server-2019-English-Full-Base
+      - /aws/service/ami-windows-latest/Windows_Server-2019-English-Core-Base
+    Default: /aws/service/ami-windows-latest/Windows_Server-2016-English-Full-Base
+  AMZNLinuxAMI:
+    Description: The latest AMI ID for Amazon Linux 1
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/amzn-ami-hvm-x86_64-gp2
+  AMZNLinux2AMI:
+    Description: The latest AMI ID for Amazon Linux 2
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+
+Conditions:
+  PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
+
+Mappings:
+  CrowdStrikeCSPMRoleTemplateURL:
+    us-1:
+      CSAccountNumber: "292230061137"
+      StackName: "CrowdStrike-CSPM-Integration"
+      StackNameEb: "CrowdStrike-CSPM-Integration-EB"
+      StackNameRootEb: "CrowdStrike-CSPM-Integration-Root-EB"
+      CSRoleName: "CrowdStrikeCSPMConnector"
+      cf: "https://cs-prod-cloudconnect-templates.s3.amazonaws.com/aws_cspm_cloudformation_v2.json"
+      cfiam: "https://cs-prod-cloudconnect-templates.s3.amazonaws.com/aws_cspm_cloudformation_iam_v2.json"
+      cfeb: "https://cs-prod-cloudconnect-templates.s3.amazonaws.com/aws_cspm_cloudformation_eb_v2.json"
+      baseurl: "us1"
+    us-2:
+      CSAccountNumber: "292230061137"
+      StackName: "CrowdStrike-CSPM-Integration"
+      StackNameEb: "CrowdStrike-CSPM-Integration-EB"
+      StackNameRootEb: "CrowdStrike-CSPM-Integration-Root-EB"
+      CSRoleName: "CrowdStrikeCSPMConnector"
+      cf: "https://cs-prod-cloudconnect-templates.s3.amazonaws.com/aws_cspm_cloudformation_v2.json"
+      cfiam: "https://cs-prod-cloudconnect-templates.s3.amazonaws.com/aws_cspm_cloudformation_iam_v2.json"
+      cfeb: "https://cs-prod-cloudconnect-templates.s3.amazonaws.com/aws_cspm_cloudformation_eb_v2.json"
+      baseurl: "us2"
+    eu-1:
+      CSAccountNumber: "292230061137"
+      StackName: "CrowdStrike-CSPM-Integration"
+      StackNameEb: "CrowdStrike-CSPM-Integration-EB"
+      StackNameRootEb: "CrowdStrike-CSPM-Integration-Root-EB"
+      CSRoleName: "CrowdStrikeCSPMConnector"
+      cf: "https://cs-prod-cloudconnect-templates.s3.amazonaws.com/aws_cspm_cloudformation_v2.json"
+      cfiam: "https://cs-prod-cloudconnect-templates.s3.amazonaws.com/aws_cspm_cloudformation_iam_v2.json"
+      cfeb: "https://cs-prod-cloudconnect-templates.s3.amazonaws.com/aws_cspm_cloudformation_eb_v2.json"
+      baseurl: "eu"
+
+Resources:
+
+# SSM Parameter in store not encrypted
+#
+  AgentActivationKey:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: AgentActivationKey
+      Type: String
+      Value: Replace Me
+      Description: Agent Activiation Key
+#
+# SSM Parameter in store not encrypted
+#
+  AgentInstallLocation:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: AgentInstallLocation
+      Type: String
+      Value: !Join
+        - '-'
+        - - agentbucket
+          - !Ref 'AWS::AccountId'
+      Description: Agent S3 Bucket
+#
+# Dynamo table not encrypted
+#
+  myDynamoDBTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: "Album"
+          AttributeType: "S"
+        - AttributeName: "Artist"
+          AttributeType: "S"
+        - AttributeName: "Sales"
+          AttributeType: "N"
+        - AttributeName: "NumberOfSongs"
+          AttributeType: "N"
+      KeySchema:
+        - AttributeName: "Album"
+          KeyType: "HASH"
+        - AttributeName: "Artist"
+          KeyType: "RANGE"
+      ProvisionedThroughput:
+        ReadCapacityUnits: "5"
+        WriteCapacityUnits: "5"
+      TableName: "myTableName"
+      GlobalSecondaryIndexes:
+        - IndexName: "myGSI"
+          KeySchema:
+            - AttributeName: "Sales"
+              KeyType: "HASH"
+            - AttributeName: "Artist"
+              KeyType: "RANGE"
+          Projection:
+            NonKeyAttributes:
+              - "Album"
+              - "NumberOfSongs"
+            ProjectionType: "INCLUDE"
+          ProvisionedThroughput:
+            ReadCapacityUnits: "5"
+            WriteCapacityUnits: "5"
+        - IndexName: "myGSI2"
+          KeySchema:
+            - AttributeName: "NumberOfSongs"
+              KeyType: "HASH"
+            - AttributeName: "Sales"
+              KeyType: "RANGE"
+          Projection:
+            NonKeyAttributes:
+              - "Album"
+              - "Artist"
+            ProjectionType: "INCLUDE"
+          ProvisionedThroughput:
+            ReadCapacityUnits: "5"
+            WriteCapacityUnits: "5"
+      LocalSecondaryIndexes:
+        - IndexName: "myLSI"
+          KeySchema:
+            - AttributeName: "Album"
+              KeyType: "HASH"
+            - AttributeName: "Sales"
+              KeyType: "RANGE"
+          Projection:
+            NonKeyAttributes:
+              - "Artist"
+              - "NumberOfSongs"
+            ProjectionType: "INCLUDE"
+#
+# ELB exposing port 80
+#
+  BadELB1:
+    Type: AWS::ElasticLoadBalancing::LoadBalancer
+    Metadata: { }
+    Properties:
+      CrossZone: true
+      HealthCheck:
+        HealthyThreshold: '5'
+        Interval: '30'
+        Target: 'TCP:80'
+        Timeout: '5'
+        UnhealthyThreshold: '2'
+      Instances:
+        - !Ref 'WebServerInstance'
+      Listeners:
+        - InstancePort: 80
+          InstanceProtocol: HTTP
+          LoadBalancerPort: 80
+          Protocol: HTTP
+      LoadBalancerName: 'Insecure-Load-Balancer'
+      Scheme: internet-facing
+      SecurityGroups:
+        - !GetAtt 'WebServerSecurityGroup.GroupId'
+      Subnets:
+        - !Ref 'PublicSubnet1'
+      Tags:
+        - Key: Name
+          Value: Webserver ELB
+#
+# Windows Bastion role with excessive permissions
+#
+  WindowsBastionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      PermissionsBoundary:
+        Fn::If:
+          - PermissionsBoundary
+          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+          - Ref: AWS::NoValue
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ssm.amazonaws.com
+                - ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: S3andSSMAccess
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:*
+                Resource: '*'
+      Path: /
+  SSMInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - !Ref 'WindowsBastionRole'
+      InstanceProfileName: SSMInstanceProfile
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      Tags:
+        - Key: Application
+          Value: !Ref 'AWS::StackName'
+        - Key: Name
+          Value: !Join
+            - '-'
+            - - VPC
+              - !Ref 'AWS::StackName'
+        - Key: Purpose
+          Value: 'Demo'
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref 'VPC'
+      CidrBlock: 10.0.3.0/24
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs ''
+      Tags:
+        - Key: Name
+          Value: !Join
+            - '-'
+            - - Priv1
+              - !Ref 'AWS::StackName'
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref 'VPC'
+      CidrBlock: 10.0.4.0/24
+      AvailabilityZone: !Select
+        - 1
+        - !GetAZs ''
+      Tags:
+        - Key: Name
+          Value: !Join
+            - '-'
+            - - Priv2
+              - !Ref 'AWS::StackName'
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref 'VPC'
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs ''
+      Tags:
+        - Key: Name
+          Value: !Join
+            - '-'
+            - - Pub1
+              - !Ref 'AWS::StackName'
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref 'VPC'
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs ''
+      Tags:
+        - Key: Name
+          Value: !Join
+            - '-'
+            - - Pub2
+              - !Ref 'AWS::StackName'
+  NAT:
+    DependsOn: AttachGateway
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt 'NATEIP.AllocationId'
+      SubnetId: !Ref 'PublicSubnet1'
+  NATEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+  IGW:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Application
+          Value: !Ref 'AWS::StackName'
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref 'VPC'
+      InternetGatewayId: !Ref 'IGW'
+#
+# Public subnets have connectivity via Internet Gateway
+#
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref 'VPC'
+      Tags:
+        - Key: Application
+          Value: !Ref 'AWS::StackName'
+        - Key: Network
+          Value: Public
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn:
+      - AttachGateway
+    Properties:
+      RouteTableId: !Ref 'PublicRouteTable'
+      DestinationCidrBlock: '0.0.0.0/0'
+      GatewayId: !Ref 'IGW'
+  PublicSubnet1RouteAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref 'PublicSubnet1'
+      RouteTableId: !Ref 'PublicRouteTable'
+  PublicSubnet2RouteAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref 'PublicSubnet2'
+      RouteTableId: !Ref 'PublicRouteTable'
+  PrivateRouteTable1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref 'VPC'
+      Tags:
+        - Key: Application
+          Value: !Ref 'AWS::StackName'
+        - Key: Network
+          Value: Private
+#
+# Private subnets have outbound connectivity via NAT GW
+#
+  PrivateSubnetPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn:
+      - AttachGateway
+    Properties:
+      RouteTableId: !Ref 'PrivateRouteTable1'
+      DestinationCidrBlock: '0.0.0.0/0'
+      NatGatewayId: !Ref 'NAT'
+  PrivateSubnet1RouteAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref 'PrivateSubnet1'
+      RouteTableId: !Ref 'PrivateRouteTable1'
+  PrivateSubnet2RouteAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref 'PrivateSubnet2'
+      RouteTableId: !Ref 'PrivateRouteTable1'
+#
+# Security Group exposes the Web Server on 80 and port 22
+#
+  WebServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable HTTPS
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: '0.0.0.0/0'
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: '0.0.0.0/0'
+      VpcId: !Ref 'VPC'
+      Tags:
+        - Key: Name
+          Value: Insecure WebServer Security Group
+#
+# Linux Web Server without HTTPS on port 80 bound to an ELB
+#
+  WebServerInstance:
+    Type: AWS::EC2::Instance
+    Metadata:
+      AWS::CloudFormation::Init:
+        configSets:
+          InstallAndRun:
+            - Install
+            - Configure
+        Install:
+          packages:
+            yum:
+              mysql: [ ]
+              mysql-server: [ ]
+              mysql-libs: [ ]
+              httpd: [ ]
+              php: [ ]
+              php-mysql: [ ]
+          files:
+            /var/www/html/index.php:
+              content: !Join
+                - ''
+                - - "<html>\n"
+                  - "  <head>\n"
+                  - "    <title>AWS CloudFormation PHP Sample</title>\n"
+                  - "    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=ISO-8859-1\"\
+                    >\n"
+                  - "  </head>\n"
+                  - "  <body>\n"
+                  - "    <h1>Welcome to the AWS CloudFormation PHP Sample</h1>\n"
+                  - "    <p/>\n"
+                  - "    <?php\n"
+                  - "      // Print out the current data and time\n"
+                  - "      print \"The Current Date and Time is: <br/>\";\n"
+                  - "      print date(\"g:i A l, F j Y.\");\n"
+                  - "    ?>\n"
+                  - "    <p/>\n"
+                  - "    <?php\n"
+                  - "      // Setup a handle for CURL\n"
+                  - "      $curl_handle=curl_init();\n"
+                  - "      curl_setopt($curl_handle,CURLOPT_CONNECTTIMEOUT,2);\n"
+                  - "      curl_setopt($curl_handle,CURLOPT_RETURNTRANSFER,1);\n"
+                  - "      // Get the hostname of the intance from the instance metadata\n"
+                  - "      curl_setopt($curl_handle,CURLOPT_URL,'http://169.254.169.254/latest/meta-data/public-hostname');\n"
+                  - "      $hostname = curl_exec($curl_handle);\n"
+                  - "      if (empty($hostname))\n"
+                  - "      {\n"
+                  - "        print \"Sorry, for some reason, we got no hostname back\
+                    \ <br />\";\n"
+                  - "      }\n"
+                  - "      else\n"
+                  - "      {\n"
+                  - "        print \"Server = \" . $hostname . \"<br />\";\n"
+                  - "      }\n"
+                  - "      // Get the instance-id of the intance from the instance\
+                    \ metadata\n"
+                  - "      curl_setopt($curl_handle,CURLOPT_URL,'http://169.254.169.254/latest/meta-data/instance-id');\n"
+                  - "      $instanceid = curl_exec($curl_handle);\n"
+                  - "      if (empty($instanceid))\n"
+                  - "      {\n"
+                  - "        print \"Sorry, for some reason, we got no instance id\
+                    \ back <br />\";\n"
+                  - "      }\n"
+                  - "      else\n"
+                  - "      {\n"
+                  - "        print \"EC2 instance-id = \" . $instanceid . \"<br />\"\
+                    ;\n"
+                  - "      }\n"
+                  - '      $Database     = "'
+                  - !GetAtt 'DBInstance.Endpoint.Address'
+                  - "\";\n"
+                  - '      $DBUser     = "'
+                  - !Ref 'DBUser'
+                  - "\";\n"
+                  - '      $DBPassword = "'
+                  - !Ref 'DBPassword'
+                  - "\";\n"
+                  - "      print \"Database = \" . $Database . \"<br />\";\n"
+                  - "      $dbconnection = mysql_connect($Database, $DBUser, $DBPassword)\n"
+                  - "                      or die(\"<font size='9' color='red'> Could\
+                    \ not connect: </font>\" . mysql_error());\n"
+                  - "      print (\"<font size='9' color='green'> Connected successfully\
+                    \ </font>\");\n"
+                  - "      mysql_close($dbconnection);\n"
+                  - "    ?>\n"
+                  - "    <h2>PHP Information</h2>\n"
+                  - "    <p/>\n"
+                  - "    <?php\n"
+                  - "      phpinfo();\n"
+                  - "    ?>\n"
+                  - "  </body>\n"
+                  - "</html>\n"
+              mode: '000600'
+              owner: apache
+              group: apache
+            /tmp/setup.mysql:
+              content: !Join
+                - ''
+                - - 'CREATE DATABASE '
+                  - !Ref 'DBName'
+                  - ";\n"
+                  - 'GRANT ALL ON '
+                  - !Ref 'DBName'
+                  - .* TO '
+                  - !Ref 'DBUser'
+                  - '''@localhost IDENTIFIED BY '''
+                  - !Ref 'DBPassword'
+                  - "';\n"
+              mode: '000400'
+              owner: root
+              group: root
+            /etc/cfn/cfn-hup.conf:
+              content: !Join
+                - ''
+                - - "[main]\n"
+                  - stack=
+                  - !Ref 'AWS::StackId'
+                  - "\n"
+                  - region=
+                  - !Ref 'AWS::Region'
+                  - "\n"
+              mode: '000400'
+              owner: root
+              group: root
+            /etc/cfn/hooks.d/cfn-auto-reloader.conf:
+              content: !Join
+                - ''
+                - - "[cfn-auto-reloader-hook]\n"
+                  - "triggers=post.update\n"
+                  - "path=Resources.WebServerInstance.Metadata.AWS::CloudFormation::Init\n"
+                  - 'action=/opt/aws/bin/cfn-init -v '
+                  - '         --stack '
+                  - !Ref 'AWS::StackName'
+                  - '         --resource WebServerInstance '
+                  - '         --configsets InstallAndRun '
+                  - '         --region '
+                  - !Ref 'AWS::Region'
+                  - "\n"
+                  - "runas=root\n"
+              mode: '000400'
+              owner: root
+              group: root
+          services:
+            sysvinit:
+              mysqld:
+                enabled: 'true'
+                ensureRunning: 'true'
+              httpd:
+                enabled: 'true'
+                ensureRunning: 'true'
+              cfn-hup:
+                enabled: 'true'
+                ensureRunning: 'true'
+                files:
+                  - /etc/cfn/cfn-hup.conf
+                  - /etc/cfn/hooks.d/cfn-auto-reloader.conf
+        Configure:
+          commands:
+            '01_set_mysql_root_password':
+              command: !Join
+                - ''
+                - - mysqladmin -u root password '
+                  - !Ref 'DBPassword'
+                  - ''''
+              test: !Join
+                - ''
+                - - '$(mysql '
+                  - !Ref 'DBName'
+                  - ' -u root --password='''
+                  - !Ref 'DBPassword'
+                  - ''' >/dev/null 2>&1 </dev/null); (( $? != 0 ))'
+            '02_create_database':
+              command: !Join
+                - ''
+                - - mysql -u root --password='
+                  - !Ref 'DBPassword'
+                  - ''' < /tmp/setup.mysql'
+              test: !Join
+                - ''
+                - - '$(mysql '
+                  - !Ref 'DBName'
+                  - ' -u root --password='''
+                  - !Ref 'DBPassword'
+                  - ''' >/dev/null 2>&1 </dev/null); (( $? != 0 ))'
+    Properties:
+      ImageId: !Ref 'AMZNLinuxAMI'
+      InstanceType: t2.medium
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: 'true'
+          DeviceIndex: '0'
+          GroupSet:
+            - !Ref 'WebServerSecurityGroup'
+          SubnetId: !Ref 'PrivateSubnet1'
+      IamInstanceProfile: !Ref 'SSMInstanceProfile'
+      Tags:
+        - Key: Name
+          Value: Insecure-WebServer
+        - Key: cstag-department
+          Value: Sales - 310000
+        - Key: cstag-owner
+          Value: jaime.franklin
+        - Key: cstag-accounting
+          Value: dev
+        - Key: cstag-business
+          Value: Sales
+        - Key: Purpose
+          Value: PreSales Demos
+      UserData: !Base64
+        Fn::Join:
+          - ''
+          - - "#!/bin/bash -xe\n"
+            - "yum update -y amazon-ssm-agent\n"
+            - "yum update -y aws-cfn-bootstrap\n"
+            - "# Install the files and packages from the metadata\n"
+            - '/opt/aws/bin/cfn-init -v '
+            - '         --stack '
+            - !Ref 'AWS::StackName'
+            - '         --resource WebServerInstance '
+            - '         --configsets InstallAndRun '
+            - '         --region '
+            - !Ref 'AWS::Region'
+            - "\n"
+            - "# Signal the status from cfn-init\n"
+            - '/opt/aws/bin/cfn-signal -e $? '
+            - '         --stack '
+            - !Ref 'AWS::StackName'
+            - '         --resource WebServerInstance '
+            - '         --region '
+            - !Ref 'AWS::Region'
+            - "\n"
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT5M
+#
+# DB Instance exposed to All 0.0.0.0/0
+#
+  DBEC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Open database for access
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '3306'
+          ToPort: '3306'
+          CidrIp: '0.0.0.0/0'
+  DBInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBName: !Ref 'DBName'
+      Tags:
+        - Key: Name
+          Value: !Join
+            - '-'
+            - - CRWD
+              - DBInstance
+              - !Ref 'AWS::StackName'
+      Engine: MySQL
+      MultiAZ: false
+      PubliclyAccessible: true
+      MasterUsername: !Ref 'DBUser'
+      MasterUserPassword: !Ref 'DBPassword'
+      DBInstanceClass: !Ref 'DBClass'
+      AllocatedStorage: !Ref 'DBAllocatedStorage'
+      VPCSecurityGroups:
+        - !GetAtt 'DBEC2SecurityGroup.GroupId'
+#
+# Example Windows server security group.
+# Designed to show admin ports open to the internet.
+# In this case we have exposed port 22 on a windows host to mitigate the overall risk but it will still
+# show in CSPM findings
+#
+  WindowsBastionSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable RDP access via port 389
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: '0.0.0.0/0'
+      VpcId: !Ref 'VPC'
+      Tags:
+        - Key: Name
+          Value: WindowsBastionRiskRule
+#
+# Example Windows server.
+#
+  WindowsBastionInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.medium
+      ImageId: !Ref 'WindowsAMI'
+      IamInstanceProfile: !Ref 'SSMInstanceProfile'
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: 'true'
+          DeviceIndex: '0'
+          GroupSet:
+            - !Ref 'WindowsBastionSecurityGroup'
+          SubnetId: !Ref 'PublicSubnet1'
+      Tags:
+        - Key: Name
+          Value: WindowsBastionServer
+        - Key: cstag-department
+          Value: Sales - 310000
+        - Key: cstag-owner
+          Value:  jaime.franklin
+        - Key: cstag-accounting
+          Value: dev
+        - Key: cstag-business
+          Value: Sales
+        - Key: Purpose
+          Value: PreSales Demos
+
+#
+# Create a KMS key that can be accessed by root.
+#
+  InsecureKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      KeyPolicy:
+        Version: '2012-10-17'
+        Id: key-default-1
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS:
+                Fn::Join:
+                  - ''
+                  - - 'arn:aws:iam::'
+                    - Ref: AWS::AccountId
+                    - :root
+            Action: kms:*
+            Resource: '*'
+      Tags:
+        - Key:
+            'KeyName'
+          Value:
+            'Insecure Key'
+#
+# Attach an unencrypted volume to a Webserver.
+#
+  WebServerVolume:
+    Type: AWS::EC2::Volume
+    Properties:
+      Size: 2
+      Encrypted: false
+      AvailabilityZone: !GetAtt WebServerInstance.AvailabilityZone
+      Tags:
+        - Key: Name
+          Value: UnencrytedVolume
+  lambdaLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      CompatibleRuntimes:
+        - python3.7
+      Content:
+        S3Bucket: !Ref S3Bucket
+        S3Key: !Join ['/', [!Ref S3Prefix, 'falconpy-layer.zip']]
+      Description: Layer for falconpy package
+      LayerName: requests-package
+
+#
+# Lambda function to generate IOAs.
+#
+  IOAGen:
+    Type: AWS::Lambda::Function
+    Properties:
+      Environment:
+        Variables:
+          s3_bucket: !Ref S3Bucket
+          region_name: !Ref AWS::Region
+          cloudtrail_name: 'crowdstrike-cloudtrail'
+      Code:
+        S3Bucket: !Ref S3Bucket
+        S3Key: !Join ['/', [!Ref S3Prefix, 'ioa-gen.zip']]
+      Layers:
+        - !Ref lambdaLayer
+      Handler: ioa-gen.lambda_handler
+      MemorySize: 128
+      Role: !GetAtt "CrowdStrikeCSPMRegisterAcctLambdaRole.Arn"
+      Runtime: python3.7
+      Timeout: 60
+      FunctionName: CSPM-IOA-Generation
+#
+# Lambda function to provision/de provision the account with CRWD using a CFT.
+#
+  RegisterAccount:
+    Type: AWS::Lambda::Function
+    DependsOn:
+      - BadELB1
+      - WebServerVolume
+      - WindowsBastionInstance
+      - WebServerInstance
+    Properties:
+      Environment:
+        Variables:
+          S3StagingBucket: !Ref S3Bucket
+          CSCloud: !FindInMap [ CrowdStrikeCSPMRoleTemplateURL, !Ref CSCloud, baseurl ]
+          CSAssumingRoleName: !FindInMap [ CrowdStrikeCSPMRoleTemplateURL, !Ref CSCloud, CSRoleName ]
+          CSAccountNumber: !FindInMap [ CrowdStrikeCSPMRoleTemplateURL, !Ref CSCloud, CSAccountNumber ]
+          aws_region: !Ref AWS::Region
+          cloudtrail_region: !Ref AWS::Region
+          EnableIOA: !Ref EnableIOA
+          s3_prefix: !Ref S3Prefix
+          permissions_boundary: !Ref PermissionsBoundary
+      Code:
+        S3Bucket: !Ref S3Bucket
+        S3Key: !Join ['/', [!Ref S3Prefix, 'register_new_horizon_account_v3.zip']]
+      Layers:
+        - !Ref lambdaLayer
+      Handler: register_new_horizon_account_v3.lambda_handler
+      MemorySize: 128
+      Role: !GetAtt "CrowdStrikeCSPMRegisterAcctLambdaRole.Arn"
+      Runtime: python3.7
+      Timeout: 300
+      FunctionName: CSPMAccount-Registration
+##
+## Trigger the lambda function to provision/deprovision the account with CRWD using a CFT.
+##
+  TriggerRegisterAccountLambda:
+    Type: 'Custom::TriggerLambda'
+    Properties:
+      FalconSecret: !Ref FalconClientSecret
+      FalconClientId: !Ref FalconClientId
+      ServiceToken: !GetAtt
+        - RegisterAccount
+        - Arn
+# The lambda role requires Admin rights to create resources required for CPSM
+# CSPM creates IAM roles, cloudtrail and eventbridge infra
+# Lab users have reader permissions so they cannot modify this lambda or attach the role to another resource
+  CrowdStrikeCSPMRegisterAcctLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      PermissionsBoundary:
+        Fn::If:
+          - PermissionsBoundary
+          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+          - Ref: AWS::NoValue
+      RoleName: CSPMRegistrationRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+            Condition: { }
+      Path: /
+      Policies:
+        - PolicyName: List_secrets
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              Sid: VisualEditor2
+              Effect: Allow
+              Action:
+                - secretsmanager:ListSecrets
+                - events:*
+                - cloudtrail:DescribeTrails
+              Resource: '*'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AdministratorAccess
+
+  MgtInstanceIAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      PermissionsBoundary:
+        Fn::If:
+          - PermissionsBoundary
+          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+          - Ref: AWS::NoValue
+      RoleName: MgtInstanceBadRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: !Join
+            - '-'
+            - - !Ref 'AWS::StackName'
+              - MgtInstanceIAMPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: VisualEditor0
+                Effect: Allow
+                Action:
+                  - ec2:DescribeInstances
+                  - ssm:ListCommands
+                  - logs:Describe*
+                  - logs:StartQuery
+                  - ssm:DescribeInstancePatches
+                  - ssm:ListInstanceAssociations
+                  - securityhub:BatchUpdateFindings
+                  - securityhub:BatchImportFindings
+                  - ssm:ListInstanceAssociations
+                  - securityhub:ListEnabledProductsForImport
+                  - ssm:GetParameter
+                  - guardduty:ListInvitations
+                  - ssm:GetMaintenanceWindowExecutionTaskInvocation
+                  - ssm:UpdateAssociationStatus
+                  - ssm:DescribeAutomationExecutions
+                  - ssm:GetMaintenanceWindowTask
+                  - ssm:DescribeAutomationStepExecutions
+                  - ssm:UpdateInstanceInformation
+                  - logs:FilterLogEvents
+                  - ssm:PutComplianceItems
+                  - ssm:GetConnectionStatus
+                  - ssm:GetMaintenanceWindowExecutionTask
+                  - logs:List*
+                  - ssm:GetOpsItem
+                  - ssm:GetMaintenanceWindowExecution
+                  - ec2messages:AcknowledgeMessage
+                  - logs:StopQuery
+                  - ssm:GetParameters
+                  - logs:Get*
+                  - ssm:DescribeOpsItems
+                  - ssm:DescribeEffectivePatchesForPatchBaseline
+                  - ssm:GetServiceSetting
+                  - ssm:DescribeAssociationExecutions
+                  - ec2messages:SendReply
+                  - ssm:DescribeDocumentPermission
+                  - ssm:ListCommandInvocations
+                  - ssm:GetAutomationExecution
+                  - ssm:GetDefaultPatchBaseline
+                  - ssm:DescribeDocument
+                  - ec2messages:GetEndpoint
+                  - ssmmessages:OpenControlChannel
+                  - ec2messages:GetMessages
+                  - ssm:GetPatchBaselineForPatchGroup
+                  - ssm:PutConfigurePackageResult
+                  - ssm:DescribePatchGroupState
+                  - ssm:GetManifest
+                  - ec2messages:DeleteMessage
+                  - ec2messages:FailMessage
+                  - ssm:DescribeInstancePatchStates
+                  - ssm:DescribeInstancePatchStatesForPatchGroup
+                  - ssmmessages:OpenDataChannel
+                  - ssm:GetDocument
+                  - ssm:GetInventorySchema
+                  - ssm:GetParametersByPath
+                  - ssm:GetMaintenanceWindow
+                  - ssm:DescribeInstanceAssociationsStatus
+                  - ssm:DescribeAssociationExecutionTargets
+                  - ssm:DescribeInstanceProperties
+                  - ssm:GetPatchBaseline
+                  - ssm:DescribeAssociation
+                  - guardduty:ListDetectors
+                  - ssm:GetDeployablePatchSnapshotForInstance
+                  - ssm:GetParameterHistory
+                  - logs:TestMetricFilter
+                  - ssmmessages:CreateControlChannel
+                  - ssm:DescribeEffectiveInstanceAssociations
+                  - ssm:DescribeInventoryDeletions
+                  - ssm:GetInventory
+                  - ssm:GetOpsSummary
+                  - ssm:DescribeActivations
+                  - ssm:GetCommandInvocation
+                  - ssmmessages:CreateDataChannel
+                  - ssm:PutInventory
+                  - ssm:DescribeInstanceInformation
+                  - ssm:ListTagsForResource
+                  - ssm:DescribeDocumentParameters
+                  - guardduty:ListOrganizationAdminAccounts
+                  - ssm:ListAssociations
+                  - ssm:UpdateInstanceAssociationStatus
+                  - ssm:DescribeAvailablePatches
+                Resource: "*"
+              - Sid: VisualEditor1
+                Effect: Allow
+                Action:
+                  - ssm:SendCommand
+                  - guardduty:GetFindings
+                  - guardduty:ListThreatIntelSets
+                  - ssm:ListDocumentVersions
+                  - ssm:DescribeDocument
+                  - guardduty:ListFindings
+                  - ssm:GetParameters
+                  - guardduty:GetDetector
+                  - ssm:GetParameter
+                  - ssm:StartSession
+                  - ssm:PutParameter
+                  - ssm:RemoveTagsFromResource
+                  - ssm:AddTagsToResource
+                  - ssm:ListTagsForResource
+                  - ssm:DescribeDocumentParameters
+                  - ssm:DescribeDocumentPermission
+                  - guardduty:ListFilters
+                  - guardduty:ListPublishingDestinations
+                  - guardduty:GetFilter
+                  - guardduty:ListTagsForResource
+                  - guardduty:ListMembers
+                Resource:
+                  - arn:aws:guardduty:*:*:detector/*
+                  - arn:aws:ssm:*:*:document/*
+                  - arn:aws:ec2:*:*:instance/*
+                  - arn:aws:ssm:*:*:parameter/*
+                  - arn:aws:ssm:*:*:patchbaseline/*
+                  - arn:aws:ssm:*:*:maintenancewindow/*
+              - Sid: VisualEditor2
+                Effect: Allow
+                Action:
+                  - ssm:SendCommand
+                  - ssm:PutParameter
+                  - ssm:ListDocumentVersions
+                  - ssm:DescribeDocument
+                  - ssm:RemoveTagsFromResource
+                  - ssm:AddTagsToResource
+                  - ssm:ListTagsForResource
+                  - ssm:DescribeDocumentParameters
+                  - ssm:DescribeDocumentPermission
+                  - ssm:GetParameters
+                  - ssm:GetParameter
+                  - ssm:StartSession
+                Resource: arn:aws:ssm:*:*:managed-instance/*
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSQSFullAccess
+  MgtInstanceBootstrapInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - !Ref 'MgtInstanceIAMRole'
+
+  IOAGenScheduledRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "ScheduledRule"
+      ScheduleExpression: "rate(30 minutes)"
+      State: "ENABLED"
+      Targets:
+        - Arn:
+            Fn::GetAtt:
+              - "IOAGen"
+              - "Arn"
+          Id: "TargetFunctionV1"
+  PermissionForEventsToInvokeLambda:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref "IOAGen"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn:
+        Fn::GetAtt:
+          - "IOAGenScheduledRule"
+          - "Arn"

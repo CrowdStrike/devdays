@@ -1,19 +1,23 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Creates a VPC for the EKS Cluster'
-Parameters:
 
+Parameters:
+  EnvAlias:
+    Type: String
+    Default: ''
+  EnvHash:
+    Type: String
+    Default: ''
   PermissionsBoundary:
     Type: String
-    Default: 'BoundaryForAdministratorAccess'
-
+    Default: ''
   VPCCIDR:
     AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
     ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16–28
     Default: 10.0.0.0/16
     Description: CIDR block for the VPC.
     Type: String
-
   PrivateSubnet1CIDR:
     AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
     ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16–28
@@ -26,25 +30,28 @@ Parameters:
     Default: 10.0.32.0/19
     Description: CIDR block for private subnet 2, located in Availability Zone 2.
     Type: String
-
   PublicSubnet1CIDR:
     AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
     ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16–28
     Default: 10.0.128.0/20
-    Description: CIDR block for the public (DMZ) subnet 1, located in Availability
-      Zone 1.
+    Description: CIDR block for the public (DMZ) subnet 1, located in Availability Zone 1.
     Type: String
   PublicSubnet2CIDR:
     AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
     ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16–28
     Default: 10.0.144.0/20
-    Description: CIDR block for the public (DMZ) subnet 2, located in Availability
-      Zone 2.
+    Description: CIDR block for the public (DMZ) subnet 2, located in Availability Zone 2.
+    Type: String
+  S3Bucket:
+    Type: String
+    Default: ''
+  DomainRGName:
+    Description: Domain Rule Group Name.
+    Default: CRWD-Demo-Domain-rg
     Type: String
 
 Conditions:
   PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
-
 
 Resources:
   InternetGateway:
@@ -54,6 +61,7 @@ Resources:
       - Key: Name
         Value:
           Fn::Sub: "${AWS::StackName}/InternetGateway"
+
   NATGateway:
     Type: AWS::EC2::NatGateway
     Properties:
@@ -67,6 +75,7 @@ Resources:
       - Key: Name
         Value:
           Fn::Sub: "${AWS::StackName}/NATGateway"
+
   NATIP:
     Type: AWS::EC2::EIP
     Properties:
@@ -75,6 +84,7 @@ Resources:
       - Key: Name
         Value:
           Fn::Sub: "${AWS::StackName}/NATIP"
+
   NATPrivateSubnet1:
     Type: AWS::EC2::Route
     Properties:
@@ -83,6 +93,7 @@ Resources:
         Ref: NATGateway
       RouteTableId:
         Ref: "PrivateRouteTable1"
+
   NATPrivateSubnet2:
     Type: AWS::EC2::Route
     Properties:
@@ -91,8 +102,6 @@ Resources:
         Ref: NATGateway
       RouteTableId:
         Ref: "PrivateRouteTable2"
-
-#
 
   PrivateRouteTable1:
     Type: AWS::EC2::RouteTable
@@ -103,6 +112,7 @@ Resources:
           Fn::Sub: "${AWS::StackName}/PrivateRouteTable1"
       VpcId:
         Ref: VPC
+
   PrivateRouteTable2:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -122,6 +132,7 @@ Resources:
           Fn::Sub: "${AWS::StackName}/PublicRouteTable"
       VpcId:
         Ref: VPC
+
   PublicSubnetRoute:
     Type: AWS::EC2::Route
     Properties:
@@ -132,6 +143,7 @@ Resources:
         Ref: PublicRouteTable
     DependsOn:
     - VPCGatewayAttachment
+
   RouteTableAssociationPrivate1:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
@@ -139,6 +151,7 @@ Resources:
         Ref: "PrivateRouteTable1"
       SubnetId:
         Ref: "PrivateSubnet1"
+
   RouteTableAssociationPrivate2:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
@@ -154,6 +167,7 @@ Resources:
         Ref: PublicRouteTable
       SubnetId:
         Ref: "PublicSubnet1"
+
   RouteTableAssociationPublic2:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
@@ -177,6 +191,7 @@ Resources:
           Fn::Sub: "${AWS::StackName}/SubnetPrivate1"
       VpcId:
         Ref: VPC
+
   PrivateSubnet2:
     Type: AWS::EC2::Subnet
     Properties:
@@ -209,6 +224,7 @@ Resources:
           Fn::Sub: "${AWS::StackName}/Publicsubnet1"
       VpcId:
         Ref: VPC
+
   PublicSubnet2:
     Type: AWS::EC2::Subnet
     Properties:
@@ -235,7 +251,8 @@ Resources:
       Tags:
       - Key: Name
         Value:
-          Fn::Sub: "${AWS::StackName}/VPC"
+          Fn::Sub: "Kubernetes VPC"
+
   VPCGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
@@ -243,6 +260,7 @@ Resources:
         Ref: InternetGateway
       VpcId:
         Ref: VPC
+
   FlowLogRole:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -284,40 +302,165 @@ Resources:
       ResourceId: !Ref VPC
       ResourceType: 'VPC'
       TrafficType: 'ALL'
-
+#  AddDomainToRGTarget:
+#    Type: Custom::ActionTarget
+#    Version: 1.0
+#    Properties:
+#      ServiceToken: !GetAtt CreateActionTargetLambdaFunction.Arn
+#      Name: !Join
+#        - '-'
+#        - - !Ref 'AWS::StackName'
+#          - AddDomainToRGFromFinding
+#      Description: Adds Domain name from finding to network firewall resource group
+#      Id: DomaintoNetFwRG
+#  CreateActionTargetLambdaFunction:
+#    Type: AWS::Lambda::Function
+#    Properties:
+#      FunctionName: !Join
+#        - '-'
+#        - - !Ref 'AWS::StackName'
+#          - CreateActionTarget
+#      Description: Custom resource to create an action target in Security Hub
+#      Handler: create_action_target.lambda_handler
+#      MemorySize: 256
+#      Role: !GetAtt CreateActionTargetLambdaRole.Arn
+#      Runtime: python3.7
+#      Timeout: 60
+#      Code:
+#        S3Bucket: !Ref
+#        S3Key: create_action_target.zip
+#  CreateActionTargetLambdaRole:
+#    Type: AWS::IAM::Role
+#    Properties:
+#      PermissionsBoundary:
+#        Fn::If:
+#          - PermissionsBoundary
+#          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+#          - Ref: AWS::NoValue
+#      Policies:
+#        - PolicyName: CreateActionTarget-LambdaPolicy
+#          PolicyDocument:
+#            Version: 2012-10-17
+#            Statement:
+#              - Effect: Allow
+#                Action:
+#                  - cloudwatch:PutMetricData
+#                Resource: '*'
+#              - Effect: Allow
+#                Action:
+#                  - logs:CreateLogGroup
+#                  - logs:CreateLogStream
+#                  - logs:PutLogEvents
+#                Resource: '*'
+#              - Effect: Allow
+#                Action:
+#                  - securityhub:CreateActionTarget
+#                  - securityhub:DeleteActionTarget
+#                Resource: '*'
+#      AssumeRolePolicyDocument:
+#        Version: 2012-10-17
+#        Statement:
+#          - Effect: Allow
+#            Principal: { Service: lambda.amazonaws.com }
+#            Action:
+#              - sts:AssumeRole
+#  AddDomainToRGTargetEventRule:
+#    Type: AWS::Events::Rule
+#    Properties:
+#      Name: AddDomainToRGTargetEventRule
+#      Description: "Remediates CIS Checks 1.5 through 1.11 by establishing a CIS Compliant Strong Password Policy"
+#      EventPattern:
+#        source:
+#          - aws.securityhub
+#        detail-type:
+#          - Security Hub Findings - Custom Action
+#        resources:
+#          - !GetAtt AddDomainToRGTarget.Arn
+#      State: "ENABLED"
+#      Targets:
+#        - Arn:
+#            Fn::GetAtt:
+#              - "AddDomainToRGLambdaFunction"
+#              - "Arn"
+#          Id: "CIS_1-5-11_RR_CWE"
+#    # Lambda function to add the AWS Network Firewall
+#  AddDomainToRGLambdaFunction:
+#    Type: AWS::Lambda::Function
+#    Properties:
+#      Environment:
+#        Variables:
+#          DEBUG_LEVEL: 'INFO'
+#          fw_domain_rg_name: !Ref DomainRGName
+#      Code:
+#        S3Bucket: !Ref S3Bucket
+#        S3Key: add_finding_domain_to_rg.zip
+#      Layers:
+#        - !Ref lambdaLayer
+#      Handler: add_finding_domain_to_rg.lambda_handler
+#      MemorySize: 128
+#      Role: !GetAtt AddDomaintoRGLambdaRole.Arn
+#      Runtime: python3.7
+#      Timeout: 60
+#  #
+#  lambdaLayer:
+#    Type: AWS::Lambda::LayerVersion
+#    Properties:
+#      CompatibleRuntimes:
+#        - python3.7
+#      Content:
+#        S3Bucket: !Ref S3Bucket
+#        S3Key: falconpy-layer.zip
+#      Description: Layer for falconpy package
+#      LayerName: requests-package
+#  AddDomaintoRGLambdaRole:
+#    Type: AWS::IAM::Role
+#    Properties:
+#      PermissionsBoundary:
+#        Fn::If:
+#          - PermissionsBoundary
+#          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+#          - Ref: AWS::NoValue
+#      RoleName: !Join
+#        - '-'
+#        - - !Ref 'AWS::StackName'
+#          - AddDomaintoRGLambdaRole
+#      AssumeRolePolicyDocument:
+#        Version: '2012-10-17'
+#        Statement:
+#          - Effect: Allow
+#            Principal:
+#              Service: lambda.amazonaws.com
+#            Action: sts:AssumeRole
+#            Condition: { }
+#      Path: /
+#      Policies:
+#        - PolicyName: Get_Values
+#          PolicyDocument:
+#            Version: '2012-10-17'
+#            Statement:
+#              - Sid: VisualEditor1
+#                Effect: Allow
+#                Action:
+#                  - network-firewall:DescribeRuleGroup
+#                  - network-firewall:CreateRuleGroup
+#                  - network-firewall:UpdateRuleGroup
+#                Resource: '*'
+#      ManagedPolicyArns:
+#        - arn:aws:iam::aws:policy/AWSLambdaExecute
 Outputs:
   VpcId:
     Value: !Ref VPC
-    Export:
-      Name:
-        Fn::Sub: "${AWS::StackName}::VpcId"
+  VpcCIDROut:
+    Value: !Ref VPCCIDR
+  PublicSubnet1CIDROut:
+    Value: !Ref PublicSubnet1CIDR
   SubnetPrivate1:
     Value: !Ref "PrivateSubnet1"
-    Export:
-      Name:
-        Fn::Sub: "${AWS::StackName}::SubnetPrivate1"
   SubnetPrivate2:
     Value: !Ref "PrivateSubnet2"
-    Export:
-      Name:
-        Fn::Sub: "${AWS::StackName}::SubnetPrivate2"
-
   SubnetPublic1:
     Value: !Ref "PublicSubnet1"
-    Export:
-      Name:
-        Fn::Sub: "${AWS::StackName}::SubnetPublic1"
   SubnetPublic2:
     Value: !Ref "PublicSubnet2"
-    Export:
-      Name:
-        Fn::Sub: "${AWS::StackName}::SubnetPublic2"
   NATGatewayEIP:
     Value: !Ref "NATIP"
-    Export:
-      Name:
-        Fn::Sub: "${AWS::StackName}::NATGatewayEIP"
-
-
-
-
