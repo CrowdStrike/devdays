@@ -9,4 +9,4 @@ docker run --privileged=true --rm \
         -v /var/run/docker.sock:/var/run/docker.sock \
         -v ${HOME}/.aws/credentials:/root/.aws/credentials:ro \
         quay.io/crowdstrike/cloud-tools-image \
-        bash -xc "aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin ${REPO_URI}; falcon-node-sensor-push ${REPO_URI}"
+        bash -xc "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${REPO_URI}; falcon-node-sensor-push ${REPO_URI}"

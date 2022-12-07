@@ -1,18 +1,29 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: "Deploys the aws load balancer controller to an existing kubernetes cluster"
+
 Metadata:
   QSLint:
     Exclusions: [W9002, W9003, W9004, W9006]
+
 Parameters:
+  EnvAlias:
+    Type: String
+    Default: ''
+  EnvHash:
+    Type: String
+    Default: ''
   PermissionsBoundary:
     Type: String
-    Default: 'BoundaryForAdministratorAccess'
+    Default: ''
   OIDCIssuerURLWithoutProtocol:
     Type: String
+    Default: ''
   EksClusterName:
     Type: String
+    Default: ''
   VpcId:
     Type: String
+    Default: ''
   ControllerCPULimit:
     Type: String
     Default: "100m"
@@ -23,6 +34,8 @@ Parameters:
     Type: String
     AllowedValues: [ Enabled, Disabled ]
     Default: Disabled
+
+
 Conditions:
   HostNetworkEnabled: !Equals [ !Ref ControllerHostNetwork, Enabled ]
   PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
@@ -79,6 +92,7 @@ Mappings:
       lbrepo: 013241004608.dkr.ecr.us-gov-west-1.amazonaws.com/amazon/aws-load-balancer-controller
     us-gov-east-1:
       lbrepo: 151742754352.dkr.ecr.us-gov-east-1.amazonaws.com/amazon/aws-load-balancer-controller
+
 Resources:
   LoadBalancerControllerIAMRole:
     Type: AWS::IAM::Role
@@ -262,6 +276,7 @@ Resources:
                 - 'elasticloadbalancing:RemoveListenerCertificates'
                 - 'elasticloadbalancing:ModifyRule'
               Resource: '*'
+
   LoadBalancerControllerHelmChart:
     Type: "AWSQS::Kubernetes::Helm"
     Metadata: { cfn-lint: { config: { ignore_checks: [ E3012 ] } } }
@@ -287,6 +302,8 @@ Resources:
             eks.amazonaws.com/role-arn: ${LoadBalancerControllerIAMRole.Arn}
         nodeSelector:
           kubernetes.io/os: linux
+
+
 Outputs:
   LoadBalancerControllerHelmChart:
     Value: !Ref LoadBalancerControllerHelmChart

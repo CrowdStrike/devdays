@@ -24,6 +24,9 @@ phases:
       - echo Creating Deployment...
       - kubectl apply -f ./app/tomcat/k8s/deployment.yaml
       - echo Creating Service... 
-      - kubectl apply -f ./app/tomcat/k8s/service.yaml 
+      - kubectl apply -f ./app/tomcat/k8s/service.yaml
+      - WAF_RULE_ARN=${WEB_ACL_ARN}
+      - echo "Update Ingress with WAF ACL"
+      - sed -i "s~WAFRULEARN~$WEB_ACL_ARN~" ./app/tomcat/k8s/ingress.yaml
       - echo Creating Ingress AWS ALB...
       - kubectl apply -f ./app/tomcat/k8s/ingress.yaml
