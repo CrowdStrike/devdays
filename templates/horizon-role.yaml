@@ -490,8 +490,7 @@ Resources:
                   - arn:aws:logs:*:*:log-group:/aws/lambda/cs-lambda-*
                   - arn:aws:logs:*:*:log-group:/aws/lambda/cs-lambda-*:log-stream:*
                 Effect: Allow
-
- CrowdStrikeCloudTrail:
+  CrowdStrikeCloudTrail:
    Type: AWS::CloudTrail::Trail
    Condition: ShouldCreateIOAResources
    Properties:
@@ -500,7 +499,6 @@ Resources:
      IncludeGlobalServiceEvents: true
      IsLogging: true
      IsMultiRegionTrail: true
-
   CrowdStrikeLambdaRegistrationLogGroup:
     Type: AWS::Logs::LogGroup
     Condition: ShouldCreateIOAResources

@@ -47,8 +47,8 @@ Parameters:
   # Shared K8S Attributes
   KubernetesVersion:
     Type: String
-    AllowedValues: [ "1.19", "1.20", "1.21", "1.22" ]
-    Default: "1.21"
+    AllowedValues: [ "1.21", "1.22", "1.23", "1.24" ]
+    Default: "1.23"
     Description: Kubernetes control plane version.
   # Optional
   RemoteAccessCIDR:
@@ -95,6 +95,7 @@ Resources:
           SubnetPublic2: !GetAtt VPCStack.Outputs.SubnetPublic2
           EKSCodeBuildServiceRoleArn: !GetAtt IAMStack.Outputs.EKSCodeBuildServiceRoleArn
           EKSQSExtentionRoleArn: !GetAtt IAMStack.Outputs.EKSQSExtentionRoleArn
+          KubernetesVersion: !Ref KubernetesVersion
 
   PodIamRoleStack:
     Type: AWS::CloudFormation::Stack

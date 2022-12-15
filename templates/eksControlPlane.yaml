@@ -31,6 +31,9 @@ Parameters:
     Type: String
     Default: "wus-cloudshare"
     Description: IAM User who will be mapped system:masters
+  KubernetesVersion:
+    Type: String
+    Default: "1.23"
 Conditions:
   PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
 
@@ -83,7 +86,7 @@ Resources:
           - !Ref SubnetPrivate1
           - !Ref SubnetPrivate2
       RoleArn: !GetAtt serviceRole.Arn
-      Version: '1.21'
+      Version: !Ref KubernetesVersion
       KubernetesApiAccess:
         Users:
           - Arn: !Sub "arn:aws:iam::${AWS::AccountId}:user/${Username}"
