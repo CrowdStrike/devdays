@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python
+  labels:
+    app: python 
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: python
+  template:
+    metadata:
+      labels:
+        app: python
+    spec:
+      serviceAccountName: pod-s3-access
+      containers:
+        - name: python
+          image: CONTAINER_IMAGE
+          ports:
+            - containerPort: 8080
