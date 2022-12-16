@@ -469,7 +469,7 @@ Resources:
               - { arn: !Ref SMFalconAPIKey }
             Type: SECRETS_MANAGER
           - Name: CS_SCAN_IMAGE
-            Value: ''
+            Value: 'True'
             Type: PLAINTEXT
             
   EKSCodeBuildProject:
@@ -644,7 +644,7 @@ Resources:
           - Name: AWS_REGION
             Value: !Ref AWS::Region
           - Name: CS_SCAN_IMAGE
-            Value: ''
+            Value: 'True'
 
   CleanUpECRRole:
     Type: AWS::IAM::Role
