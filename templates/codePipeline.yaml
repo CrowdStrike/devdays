@@ -832,7 +832,7 @@ Resources:
   ImageScanCodeBuildProject:
     Type: AWS::CodeBuild::Project
     Properties:
-      Name: !Ref ECRCodeBuildProjectName
+      Name: 'ImageScanDemoBuild'
       ServiceRole: !Ref ECRCodeBuildServiceRole
       Source:
         Type: CODEPIPELINE
@@ -871,7 +871,7 @@ Resources:
   ImageScanDeployCodeBuildProject:
     Type: AWS::CodeBuild::Project
     Properties:
-      Name: 'ImageScanDemo'
+      Name: 'ImageScanDemoBuild'
       ServiceRole: !Ref EKSCodeBuildServiceRoleArn
       Source:
         Type: CODEPIPELINE
