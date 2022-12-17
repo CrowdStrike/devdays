@@ -871,7 +871,7 @@ Resources:
   ImageScanDeployCodeBuildProject:
     Type: AWS::CodeBuild::Project
     Properties:
-      Name: 'ImageScanDemoBuild'
+      Name: 'ImageScanDemoDeploy'
       ServiceRole: !Ref EKSCodeBuildServiceRoleArn
       Source:
         Type: CODEPIPELINE
