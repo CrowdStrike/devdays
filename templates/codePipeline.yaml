@@ -4,7 +4,7 @@ Description: 'Creates a CI/CD pipeline for the vulnerable app.'
 Parameters:
   EnvAlias:
     Type: String
-    Default: ''
+    Default: 'devdays-cnap'
   EnvHash:
     Type: String
     Default: ''
@@ -16,6 +16,7 @@ Parameters:
   CrowdStrikeCloud:
     Description: 'CrowdStrike Cloud'
     Type: String
+    Default: 'us-1'
   FalconClientID:
     NoEcho: true
     Description: 'Client ID for the Falcon API'
@@ -58,10 +59,11 @@ Parameters:
   S3Prefix:
     Description: prefix for file path
     Type: String
+    Default: 'templates'
   S3CodeBucketKey:
     Description: Key of the S3 bucket with the initial commit of code
     Type: String
-    Default: ''
+    Default: 'code.zip'
   # AWS CodeBuild Project
   ECRCodeBuildProjectName:
     Description: CodeBuild Project Name for building the app image
@@ -78,6 +80,7 @@ Parameters:
   EKSClusterName:
     Description: EKS Cluster name to deploy to
     Type: String
+    Default: 'devdays-cnap-EKS-Cluster'
   PodS3AccessRoleArn:
     Description: IAM Role to associate with the Service Account
     Type: String
