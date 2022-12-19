@@ -11,7 +11,7 @@ metadata:
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/wafv2-acl-arn: WAFRULEARN
   labels:
-    app: webapp
+    app: web-dvwa
 spec:
   rules:
     - http:
@@ -20,6 +20,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: "webapp"
+                name: "web-dvwa"
                 port:
                   number: 80

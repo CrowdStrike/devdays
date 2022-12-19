@@ -1,22 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: python
+  name: web-dvwa
   labels:
-    app: python 
+    app: web-dvwa 
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: python
+      app: web-dvwa
   template:
     metadata:
       labels:
-        app: python
+        app: web-dvwa
     spec:
       serviceAccountName: pod-s3-access
       containers:
-        - name: python
+        - name: web-dvwa
           image: CONTAINER_IMAGE
           ports:
             - containerPort: 8080
