@@ -1,2 +1,2 @@
 FROM vulnerables/web-dvwa
-COPY main.py
+COPY main.py .
