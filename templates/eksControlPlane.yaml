@@ -33,7 +33,7 @@ Parameters:
     Description: IAM User who will be mapped system:masters
   KubernetesVersion:
     Type: String
-    Default: "1.23"
+    Default: ""
 Conditions:
   PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
 

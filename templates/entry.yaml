@@ -12,6 +12,7 @@ Parameters:
   CrowdStrikeCloud:
     Type: String
     AllowedValues: ['us-1','us-2','eu-1']
+    Default: 'us-1'
   FalconClientID:
     NoEcho: true
     Description: 'Client ID for the Falcon API'
@@ -37,13 +38,13 @@ Parameters:
     Default: ''
   S3Prefix:
     Type: String
-    Default: ''
+    Default: 'templates'
   PermissionsBoundary:
     Type: String
     Default: 'BoundaryForAdministratorAccess'
   KeyPairName:
     Type: String
-    Default: cs-key
+    Default: ''
   # Shared K8S Attributes
   KubernetesVersion:
     Type: String
@@ -178,21 +179,6 @@ Resources:
         ControlPlaneSecurityGroupId: !GetAtt EKSControlPlaneStack.Outputs.ControlPlaneSecurityGroupId
         EnvironmentVariables: !Sub "CS_CID=${FalconCID}, DOCKER_API_TOKEN=${DockerAPIToken}, CS_ENV=${CrowdStrikeCloud}, CS_CLIENT_ID=${FalconClientID}, CS_CLIENT_SECRET=${FalconClientSecret}, K8S_CLUSTER_NAME=${EKSControlPlaneStack.Outputs.UniqueClusterName}, K8S_CA_DATA=${EKSControlPlaneStack.Outputs.CAData}, K8S_VERSION=${KubernetesVersion}, K8S_ENDPOINT=${EKSControlPlaneStack.Outputs.EKSEndpoint}"
 
-  # KaliStack:
-  #   Type: AWS::CloudFormation::Stack
-  #   Properties:
-  #     TemplateURL: !Sub 'https://${S3Bucket}.s3.amazonaws.com/${S3Prefix}/kali.yaml'
-  #     Parameters:
-  #       EnvAlias: !Ref EnvAlias
-  #       EnvHash:  !Ref EnvHash
-  #       KeyPairName: !Ref KeyPairName
-  #       S3Bucket: !Ref S3Bucket
-  #       S3Prefix: !Ref S3Prefix
-  #       VPCCIDR: !GetAtt VPCStack.Outputs.VpcCIDROut
-  #       PublicSubnetCIDR: !GetAtt VPCStack.Outputs.PublicSubnet1CIDROut
-  #       NATGatewayEIP: !GetAtt VPCStack.Outputs.NATGatewayEIP
-  #       RemoteAccessCIDR: !Ref RemoteAccessCIDR
-  #       PermissionsBoundary: !Ref PermissionsBoundary
   MetasploitStack:
     Type: AWS::CloudFormation::Stack
     Properties:
