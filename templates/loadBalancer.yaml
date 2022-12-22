@@ -34,6 +34,9 @@ Parameters:
     Type: String
     AllowedValues: [ Enabled, Disabled ]
     Default: Disabled
+  LbcChartVersion:
+    Type: String
+    Default: '1.4.6'
 
 
 Conditions:
@@ -286,7 +289,7 @@ Resources:
       Name: aws-load-balancer-controller
       Repository: https://aws.github.io/eks-charts
       Chart: aws-load-balancer-controller
-      Version: 1.2.7
+      Version: !Ref LbcChartVersion
       Values:
         clusterName: !Ref EksClusterName
         region: !Sub '${AWS::Region}'
