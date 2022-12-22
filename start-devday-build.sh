@@ -4,7 +4,7 @@ NC="\033[0;0m"
 LB="\033[1;34m"
 env_up(){
    
-    git clone https://github.com/CrowdStrike/devdays.git
+    #git clone https://github.com/CrowdStrike/devdays.git
 
    EnvHash=$(LC_ALL=C tr -dc a-z0-9 </dev/urandom | head -c 6)
    S3Bucket=cloudsecurity-stack-${EnvHash}
@@ -16,42 +16,38 @@ env_up(){
    echo -e "$LB\n"
    echo -e "Welcome to DevDays$NC"
    echo -e "$LB\n"
-   echo -e "You will asked to provide a Falcon API Key Client ID and Secret. You can create one at https://falcon.crowdstrike.com/support/api-clients-and-keys"
-   echo -e "Dev Days Workshop requires the following API Scope permissions:"
-   echo -e "AWS Accounts:R"
-   echo -e "CSPM registration:R/W"
-   echo -e "CSPM remediation:R/W"
-   echo -e "Customer IOA rules:R/W"
-   echo -e "Hosts:R"
-   echo -e "Falcon Container Image:R/W"
-   echo -e "Falcon Images Download:R"
-   echo -e "Kubernetes Protection Agent:W"
-   echo -e "Sensor Download:R"
-   echo -e "Event streams:R"
+   echo -e "You will asked to provide a Falcon API Key Client ID and Secret." 
+   echo -e "You can create one at https://falcon.crowdstrike.com/support/api-clients-and-keys"
    echo -e "$LB\n"
+   echo -e "The ev Days Workshop environment requires the following API Scope permissions:"
+   echo -e " - AWS Accounts:R"
+   echo -e " - CSPM registration:R/W"
+   echo -e " - CSPM remediation:R/W"
+   echo -e " - Customer IOA rules:R/W"
+   echo -e " - Hosts:R"
+   echo -e " - Falcon Container Image:R/W"
+   echo -e " - Falcon Images Download:R"
+   echo -e " - Kubernetes Protection Agent:W"
+   echo -e " - Sensor Download:R"
+   echo -e " - Event streams:R"
    read -p "Enter your Falcon API Key Client ID: " CLIENT_ID
    read -p "Enter your Falcon API Key Client Secret: " CLIENT_SECRET
    read -p "Enter your Falcon Cloud [us-1]: " CS_CLOUD
    CS_CLOUD=${CS_CLOUD:-us-1}
-   echo -e "$LB\n"
    echo -e "For the next variable (Falcon CID), use the entire string include the 2-character hash which you can find at https://falcon.crowdstrike.com/hosts/sensor-downloads"
-   echo -e "$LB\n"
    read -p "Enter your Falcon CID: " CS_CID
-   echo -e "$LB\n"
    echo -e "You can find your Docker API Token at https://falcon.crowdstrike.com/cloud-security/registration?return_to=eks."
    echo -e "Click 'Register new Kubernetes Cluster' > 'Self-Managed Kubernetes Service' > enter any random string in the 'Cluster Name' field > Click 'Generate'"
    echo -e "Copy the value for 'dockerAPIToken' from the script that appears and use it below"
-   echo -e "$LB\n"
    read -p "Enter your Falcon Docker API Token: " DOCKER_API_TOKEN
    echo -e "Enter an existing key-pair in us-east-1 for connecting to EC2 instances. Yo can create one at https://us-east-1.console.aws.amazon.com/ec2#KeyPairs:"
-   echo "$LB\n"
    read -p "Enter your EC2 key-pair name [cs-key]: " KeyPairName
    KeyPairName=${KeyPairName:-cs-key}
 
    aws s3api create-bucket --bucket $S3Bucket --region $AWS_REGION
    
-   cd devdays/templates
-   aws s3 cp . s3://${BUCKET_NAME}/${S3_PREFIX} --recursive 
+   cd templates
+   aws s3 cp . s3://${S3Bucket}/${S3Prefix} --recursive 
    echo -e "$LB\n"
    echo -e "Standing up environment...$NC"
 
@@ -60,7 +56,7 @@ env_up(){
    --parameters \
    ParameterKey=S3Bucket,ParameterValue=${S3Bucket} \
    ParameterKey=S3Prefix,ParameterValue=${S3Prefix} \
-   ParameterKey=KeyPairName,ParameterValue=${KeyPairName}
+   ParameterKey=KeyPairName,ParameterValue=${KeyPairName} \
    ParameterKey=FalconClientID,ParameterValue=$CLIENT_ID \
    ParameterKey=FalconClientSecret,ParameterValue=$CLIENT_SECRET \
    ParameterKey=CrowdStrikeCloud,ParameterValue=$CS_CLOUD \
