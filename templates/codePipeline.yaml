@@ -37,7 +37,7 @@ Parameters:
   SensorECRRepositoryName:
     Type: String
     Default: 'falcon-sensor'
-  ImageScanRepositoryName:
+  ImageScanECRRepositoryName:
     Type: String
     Default: 'test-image'
   # AWS CodeCommit Repository
@@ -529,7 +529,7 @@ Resources:
   ImageScanRepository:
     Type: AWS::ECR::Repository
     Properties:
-      RepositoryName: !Ref ImageScanRepositoryName
+      RepositoryName: !Ref ImageScanECRRepositoryName
 
   # CodeCommitRepository:
   #   Type: AWS::CodeCommit::Repository
@@ -540,7 +540,7 @@ Resources:
   #         Bucket: !Ref S3CodeBucketName
   #         Key: !Join ['/', [!Ref S3Prefix, !Ref S3CodeBucketKey] ] 
   #     RepositoryDescription: !Ref RepositoryDescription
-  #     RepositoryName: !Ref RepositoryName
+  #     RepositoryName: !Ref ImageScanRepoName
 
   ImageScanCodePipelineArtifactStoreBucket:
     Type: 'AWS::S3::Bucket'
@@ -681,7 +681,7 @@ Resources:
   ImageScanAppPipeline:
     Type: 'AWS::CodePipeline::Pipeline'
     Properties:
-      Name: imagescan-pipeline
+      Name: image-scan-pipeline
       RoleArn: !GetAtt
         - CodePipelineServiceRole
         - Arn
@@ -715,19 +715,6 @@ Resources:
                 - Name: SourceOutput
               OutputArtifacts:
                 - Name: BuildOutput
-              RunOrder: 1
-        - Name: Deploy
-          Actions:
-            - Name: Deploy
-              ActionTypeId:
-                Category: Build
-                Owner: AWS
-                Version: '1'
-                Provider: CodeBuild
-              Configuration:
-                ProjectName: !Ref ImageScanDeployCodeBuildProject
-              InputArtifacts:
-                - Name: SourceOutput
               RunOrder: 1
       ArtifactStore:
         Type: S3
@@ -786,7 +773,7 @@ Resources:
   ImageScanCodeBuildProject:
     Type: AWS::CodeBuild::Project
     Properties:
-      Name: 'ImageScanDemoBuild'
+      Name: 'image-scan-demo-build'
       ServiceRole: !Ref ECRCodeBuildServiceRole
       Source:
         Type: CODEPIPELINE
@@ -820,36 +807,6 @@ Resources:
             Type: SECRETS_MANAGER
           - Name: CS_SCAN_IMAGE
             Value: 'True'
-            Type: PLAINTEXT
-            
-  ImageScanDeployCodeBuildProject:
-    Type: AWS::CodeBuild::Project
-    Properties:
-      Name: 'ImageScanDemoDeploy'
-      ServiceRole: !Ref EKSCodeBuildServiceRoleArn
-      Source:
-        Type: CODEPIPELINE
-        BuildSpec: imagescan-deploy-buildspec.yaml
-      Artifacts:
-        Type: CODEPIPELINE
-      Environment:
-        ComputeType: BUILD_GENERAL1_SMALL
-        Image: 'aws/codebuild/standard:5.0'
-        ImagePullCredentialsType: 'CODEBUILD'
-        PrivilegedMode: true
-        Type: LINUX_CONTAINER
-        EnvironmentVariables:
-          - Name: REPO_ECR
-            Value: !GetAtt ImageScanRepository.RepositoryUri
-            Type: PLAINTEXT
-          - Name: EKS_CLUSTER_NAME
-            Value: !Ref EKSClusterName
-            Type: PLAINTEXT
-          - Name: SERVICE_ROLE_ARN
-            Value: !Ref PodS3AccessRoleArn
-            Type: PLAINTEXT
-          - Name: WEB_ACL_ARN
-            Value: !Ref WafRulesARN
             Type: PLAINTEXT
 
   ################################
@@ -995,7 +952,12 @@ Resources:
             Value: !Ref AWS::Region
           - Name: CS_SCAN_IMAGE
             Value: 'True'
-
+  
+  ##########################
+  #                        #
+  #        Clean Up        #
+  #                        # 
+  ########################## 
   CleanUpECRRole:
     Type: AWS::IAM::Role
     Properties:
