@@ -7,7 +7,7 @@ env_up(){
     #git clone https://github.com/CrowdStrike/devdays.git
 
    EnvHash=$(LC_ALL=C tr -dc a-z0-9 </dev/urandom | head -c 6)
-   S3Bucket=cloudsecurity-stack-${EnvHash}
+   S3Bucket=cloudsec-stack-${EnvHash}
    AWS_REGION='us-east-1'
    S3Prefix='templates'
    StackName=${S3Bucket}
