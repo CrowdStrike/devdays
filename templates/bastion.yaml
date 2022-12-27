@@ -123,7 +123,7 @@ Resources:
             echo "export AWS_REGION=${AWS::Region}" | tee -a /home/ssm-user/.bashrc
             echo "export AWS_DEFAULT_REGION=${AWS::Region}" | tee -a /home/ssm-user/.bashrc
             echo "export PS1='\[\u@bastion\w\]$'" | tee -a /home/ssm-user/.bashrc
-            echo "export alias k=kubectl"  | tee -a /home/ssm-user/.bashrc
+            echo "alias k=kubectl"  | tee -a /home/ssm-user/.bashrc
             echo "cd ~" >> /home/ssm-user/.bashrc
             #get and run setup 
             cd /tmp
