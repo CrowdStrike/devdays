@@ -24,7 +24,11 @@ Parameters:
   S3Prefix:
     Type: String
     Description: path to objects
-    Default: ''  
+    Default: ''
+  KeyPairName:
+    Type: String
+    Description: ec2 key pair
+    Default: ''
   FalconClientId:
     Description: Falcon OAuth2 Client ID.
     Type: String
@@ -310,6 +314,8 @@ Resources:
                 Action:
                   - s3:*
                 Resource: '*'
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore'          
       Path: /
   SSMInstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -785,6 +791,7 @@ Resources:
     Properties:
       InstanceType: t2.medium
       ImageId: !Ref 'WindowsAMI'
+      KeyName: !Ref KeyPairName
       IamInstanceProfile: !Ref 'SSMInstanceProfile'
       NetworkInterfaces:
         - AssociatePublicIpAddress: 'true'

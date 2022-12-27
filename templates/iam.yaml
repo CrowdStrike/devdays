@@ -440,7 +440,7 @@ Resources:
                   - ecr:GetRegistryScanningConfiguration
                 Resource: !Sub 'arn:aws:ecr:*:${AWS::AccountId}:*'
       ManagedPolicyArns:
-        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
+        # - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2RoleforSSM' #to be deprecated. Only thing missing is CW:PutMetricData, EC2:Describe Instance status, ds:etc.
         - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore'
         - !Sub 'arn:${AWS::Partition}:iam::aws:policy/CloudWatchAgentServerPolicy'
         - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonS3FullAccess'

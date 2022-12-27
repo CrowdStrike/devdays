@@ -32,14 +32,14 @@ env_up(){
    echo -e " - Event streams:R"
    read -p "Enter your Falcon API Key Client ID: " CLIENT_ID
    read -p "Enter your Falcon API Key Client Secret: " CLIENT_SECRET
-   read -p "Enter your Falcon Cloud [us-1]: " CS_CLOUD
-   CS_CLOUD=${CS_CLOUD:-us-1}
    echo -e "For the next variable (Falcon CID), use the entire string include the 2-character hash which you can find at https://falcon.crowdstrike.com/hosts/sensor-downloads"
    read -p "Enter your Falcon CID: " CS_CID
    echo -e "You can find your Docker API Token at https://falcon.crowdstrike.com/cloud-security/registration?return_to=eks."
    echo -e "Click 'Register new Kubernetes Cluster' > 'Self-Managed Kubernetes Service' > enter any random string in the 'Cluster Name' field > Click 'Generate'"
    echo -e "Copy the value for 'dockerAPIToken' from the script that appears and use it below"
    read -p "Enter your Falcon Docker API Token: " DOCKER_API_TOKEN
+   read -p "Enter your Falcon Cloud [us-1]: " CS_CLOUD
+   CS_CLOUD=${CS_CLOUD:-us-1}
    echo -e "Enter an existing key-pair in us-east-1 for connecting to EC2 instances. Yo can create one at https://us-east-1.console.aws.amazon.com/ec2#KeyPairs:"
    read -p "Enter your EC2 key-pair name [cs-key]: " KeyPairName
    KeyPairName=${KeyPairName:-cs-key}
@@ -64,7 +64,7 @@ env_up(){
    ParameterKey=DockerAPIToken,ParameterValue=$DOCKER_API_TOKEN
 
     echo -e "The Cloudformation stack will take 20-30 minutes to complete.$NC"
-    echo -e "\n\nCheck the status at any time with the command \n\naws cloudformation describe-stacks --stack-name devdays-cnap-stack --region $REGION_CODE$NC\n\n"
+    echo -e "\n\nCheck the status at any time with the command \n\naws cloudformation describe-stacks --stack-name devdays-cnap-stack --region $AWS_REGION$NC\n\n"
     #sleep 5
     #id=`curl -s http://169.254.169.254/latest/meta-data/instance-id`
     #aws ec2 terminate-instances --region $AWS_REGION --instance-ids $id

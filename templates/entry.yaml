@@ -229,6 +229,7 @@ Resources:
         EnvHash:  !Ref EnvHash
         S3Bucket: !Ref S3Bucket
         S3Prefix: !Ref S3Prefix
+        KeyPairName: !Ref KeyPairName
         CSCloud: !Ref CrowdStrikeCloud
         FalconClientId: !Ref FalconClientID
         FalconClientSecret: !Ref FalconClientSecret
