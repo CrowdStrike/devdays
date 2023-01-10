@@ -4,7 +4,7 @@ Description: 'Creates a CI/CD pipeline for the vulnerable app.'
 Parameters:
   EnvAlias:
     Type: String
-    Default: ''
+    Default: 'devdays-cnap'
   EnvHash:
     Type: String
     Default: ''
@@ -16,6 +16,7 @@ Parameters:
   CrowdStrikeCloud:
     Description: 'CrowdStrike Cloud'
     Type: String
+    Default: 'us-1'
   FalconClientID:
     NoEcho: true
     Description: 'Client ID for the Falcon API'
@@ -36,6 +37,9 @@ Parameters:
   SensorECRRepositoryName:
     Type: String
     Default: 'falcon-sensor'
+  ImageScanECRRepositoryName:
+    Type: String
+    Default: 'test-image'
   # AWS CodeCommit Repository
   BranchName:
     Description: CodeCommit branch name
@@ -55,10 +59,11 @@ Parameters:
   S3Prefix:
     Description: prefix for file path
     Type: String
+    Default: 'templates'
   S3CodeBucketKey:
     Description: Key of the S3 bucket with the initial commit of code
     Type: String
-    Default: ''
+    Default: 'code.zip'
   # AWS CodeBuild Project
   ECRCodeBuildProjectName:
     Description: CodeBuild Project Name for building the app image
@@ -75,6 +80,7 @@ Parameters:
   EKSClusterName:
     Description: EKS Cluster name to deploy to
     Type: String
+    Default: 'devdays-cnap-EKS-Cluster'
   PodS3AccessRoleArn:
     Description: IAM Role to associate with the Service Account
     Type: String
@@ -261,6 +267,18 @@ Resources:
             - AmazonCloudWatchEventRole
             - Arn
           Id: codepipeline-SensorImportPipeline
+        - Arn: !Join
+            - ''
+            - - 'arn:aws:codepipeline:'
+              - !Ref 'AWS::Region'
+              - ':'
+              - !Ref 'AWS::AccountId'
+              - ':'
+              - !Ref ImageScanAppPipeline
+          RoleArn: !GetAtt
+            - IScanAmazonCloudWatchEventRole
+            - Arn
+          Id: codepipeline-IScanAppPipeline
 
   CodePipelineServiceRole:
     Type: 'AWS::IAM::Role'
@@ -502,6 +520,295 @@ Resources:
             Value: !Ref WafRulesARN
             Type: PLAINTEXT
 
+ ################################
+  #                              #
+  #  Image Scan Build Pipeline   #
+  #                              #
+  ################################
+
+  ImageScanRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Ref ImageScanECRRepositoryName
+
+  # CodeCommitRepository:
+  #   Type: AWS::CodeCommit::Repository
+  #   Properties:
+  #     Code:
+  #       BranchName: !Ref BranchName
+  #       S3:
+  #         Bucket: !Ref S3CodeBucketName
+  #         Key: !Join ['/', [!Ref S3Prefix, !Ref S3CodeBucketKey] ] 
+  #     RepositoryDescription: !Ref RepositoryDescription
+  #     RepositoryName: !Ref ImageScanRepoName
+
+  ImageScanCodePipelineArtifactStoreBucket:
+    Type: 'AWS::S3::Bucket'
+  ImageScanCodePipelineArtifactStoreBucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      Bucket: !Ref ImageScanCodePipelineArtifactStoreBucket
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: IScanDenyUnEncryptedObjectUploads
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:PutObject'
+            Resource: !Join
+              - ''
+              - - !GetAtt
+                  - ImageScanCodePipelineArtifactStoreBucket
+                  - Arn
+                - /*
+            Condition:
+              StringNotEquals:
+                's3:x-amz-server-side-encryption': 'aws:kms'
+          - Sid: IScanDenyInsecureConnections
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource: !Join
+              - ''
+              - - !GetAtt
+                  - ImageScanCodePipelineArtifactStoreBucket
+                  - Arn
+                - /*
+            Condition:
+              Bool:
+                'aws:SecureTransport': false
+
+  IScanAmazonCloudWatchEventRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      PermissionsBoundary:
+        Fn::If:
+          - PermissionsBoundary
+          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+          - Ref: AWS::NoValue
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - events.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: cwe-iscan-pipeline-execution
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: 'codepipeline:StartPipelineExecution'
+                Resource: !Join
+                  - ''
+                  - - 'arn:aws:codepipeline:'
+                    - !Ref 'AWS::Region'
+                    - ':'
+                    - !Ref 'AWS::AccountId'
+                    - ':'
+                    - !Ref ImageScanAppPipeline
+
+  # CodePipelineServiceRole:
+  #   Type: 'AWS::IAM::Role'
+  #   Properties:
+  #     PermissionsBoundary:
+  #       Fn::If:
+  #         - PermissionsBoundary
+  #         - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+  #         - Ref: AWS::NoValue
+  #     AssumeRolePolicyDocument:
+  #       Version: 2012-10-17
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal:
+  #             Service:
+  #               - codepipeline.amazonaws.com
+  #           Action: 'sts:AssumeRole'
+  #     Path: /
+  #     Policies:
+  #       - PolicyName: AWS-CodePipeline-Service-3
+  #         PolicyDocument:
+  #           Version: 2012-10-17
+  #           Statement:
+  #             - Effect: Allow
+  #               Action:
+  #                 - 'codecommit:CancelUploadArchive'
+  #                 - 'codecommit:GetBranch'
+  #                 - 'codecommit:GetCommit'
+  #                 - 'codecommit:GetUploadArchiveStatus'
+  #                 - 'codecommit:UploadArchive'
+  #               Resource: '*'
+  #             - Effect: Allow
+  #               Action:
+  #                 - 'codedeploy:CreateDeployment'
+  #                 - 'codedeploy:GetApplicationRevision'
+  #                 - 'codedeploy:GetDeployment'
+  #                 - 'codedeploy:GetDeploymentConfig'
+  #                 - 'codedeploy:RegisterApplicationRevision'
+  #               Resource: '*'
+  #             - Effect: Allow
+  #               Action:
+  #                 - 'codebuild:BatchGetBuilds'
+  #                 - 'codebuild:StartBuild'
+  #               Resource: '*'
+  #             - Effect: Allow
+  #               Action:
+  #                 - 'devicefarm:ListProjects'
+  #                 - 'devicefarm:ListDevicePools'
+  #                 - 'devicefarm:GetRun'
+  #                 - 'devicefarm:GetUpload'
+  #                 - 'devicefarm:CreateUpload'
+  #                 - 'devicefarm:ScheduleRun'
+  #               Resource: '*'
+  #             - Effect: Allow
+  #               Action:
+  #                 - 'lambda:InvokeFunction'
+  #                 - 'lambda:ListFunctions'
+  #               Resource: '*'
+  #             - Effect: Allow
+  #               Action:
+  #                 - 'iam:PassRole'
+  #               Resource: '*'
+  #             - Effect: Allow
+  #               Action:
+  #                 - 'ec2:*'
+  #                 - 'cloudwatch:*'
+  #                 - 's3:*'
+  #               Resource: '*'
+  ImageScanAppPipeline:
+    Type: 'AWS::CodePipeline::Pipeline'
+    Properties:
+      Name: image-scan-pipeline
+      RoleArn: !GetAtt
+        - CodePipelineServiceRole
+        - Arn
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: SourceAction
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Version: "1"
+                Provider: CodeCommit
+              OutputArtifacts:
+                - Name: SourceOutput
+              Configuration:
+                BranchName: !Ref BranchName
+                RepositoryName: !Ref RepositoryName
+                PollForSourceChanges: false
+              RunOrder: 1
+        - Name: Build
+          Actions:
+            - Name: Build
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: '1'
+                Provider: CodeBuild
+              Configuration:
+                ProjectName: !Ref ImageScanCodeBuildProject
+              InputArtifacts:
+                - Name: SourceOutput
+              OutputArtifacts:
+                - Name: BuildOutput
+              RunOrder: 1
+      ArtifactStore:
+        Type: S3
+        Location: !Ref ImageScanCodePipelineArtifactStoreBucket
+
+  # ECRCodeBuildServiceRole:
+  #   Type: AWS::IAM::Role
+  #   Properties:
+  #     PermissionsBoundary:
+  #       Fn::If:
+  #         - PermissionsBoundary
+  #         - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+  #         - Ref: AWS::NoValue
+  #     AssumeRolePolicyDocument:
+  #       Version: 2012-10-17
+  #       Statement:
+  #         - Effect: Allow
+  #           Action:
+  #             - sts:AssumeRole
+  #           Principal:
+  #             Service:
+  #               - codebuild.amazonaws.com
+  # ECRCodeBuildServicePolicy:
+  #   Type: AWS::IAM::Policy
+  #   Properties:
+  #     PolicyName: ECRCodeBuildServicePolicy
+  #     Roles:
+  #       - !Ref ECRCodeBuildServiceRole
+  #     PolicyDocument:
+  #       Version: 2012-10-17
+  #       Statement:
+  #         - Effect: Allow
+  #           Action:
+  #             - logs:CreateLogGroup
+  #             - logs:CreateLogStream
+  #             - logs:PutLogEvents
+  #           Resource: "arn:aws:logs:*:*:*"
+  #         - Effect: Allow
+  #           Action:
+  #             - s3:GetObject
+  #             - s3:GetObjectVersion
+  #             - s3:PutObject
+  #           Resource:
+  #             - "*"
+  #         - Effect: Allow
+  #           Action:
+  #             - ecr:*
+  #           Resource:
+  #             - "*"
+  #         - Effect: Allow
+  #           Action:
+  #             - secretsmanager:*
+  #           Resource:
+  #             - !Ref SMFalconAPIKey
+
+  ImageScanCodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: 'image-scan-demo-build'
+      ServiceRole: !Ref ECRCodeBuildServiceRole
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: imagescan-buildspec.yaml
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: 'aws/codebuild/standard:5.0'
+        ImagePullCredentialsType: 'CODEBUILD'
+        PrivilegedMode: true
+        Type: LINUX_CONTAINER
+        EnvironmentVariables:
+          - Name: REPO_ECR
+            Value: !GetAtt ImageScanRepository.RepositoryUri
+            Type: PLAINTEXT
+          - Name: FALCON_CLIENT_ID
+            Value: !Sub
+              - '${arn}:client_id'
+              - { arn: !Ref SMFalconAPIKey }
+            Type: SECRETS_MANAGER
+          - Name: FALCON_CLIENT_SECRET
+            Value: !Sub
+              - '${arn}:client_secret'
+              - { arn: !Ref SMFalconAPIKey }
+            Type: SECRETS_MANAGER
+          - Name: CS_CLOUD
+            Value: !Sub
+              - '${arn}:cs_cloud'
+              - { arn: !Ref SMFalconAPIKey }
+            Type: SECRETS_MANAGER
+          - Name: CS_SCAN_IMAGE
+            Value: 'True'
+            Type: PLAINTEXT
+
   ################################
   #                              #
   #    Sensor Import Pipeline    #
@@ -645,7 +952,12 @@ Resources:
             Value: !Ref AWS::Region
           - Name: CS_SCAN_IMAGE
             Value: 'True'
-
+  
+  ##########################
+  #                        #
+  #        Clean Up        #
+  #                        # 
+  ########################## 
   CleanUpECRRole:
     Type: AWS::IAM::Role
     Properties:
