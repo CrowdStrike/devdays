@@ -74,7 +74,7 @@ Resources:
         config:
           ignore_checks: [ E3001 ]
     Properties:
-      Name: !Sub '${EnvAlias}-EKS-Cluster'
+      Name: !Sub '${EnvAlias}-EKS-Cluster-${EnvHash}'
       ResourcesVpcConfig:
         EndpointPrivateAccess: true
         EndpointPublicAccess: true
