@@ -17,13 +17,15 @@ install_packages ()
 {
 	touch ~/.hushlogin;
 	touch /home/kali/.hushlogin;
-	sudo apt-get -yqq update;
-	sudo apt-get -yqq install jq net-tools;
-	mkdir /tmp/ssm
-	cd /tmp/ssm
-    wget https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/debian_amd64/amazon-ssm-agent.deb
-    sudo dpkg -i amazon-ssm-agent.deb
-    sudo systemctl enable amazon-ssm-agent
+	#sudo NEEDRESTART_MODE=a DEBIAN_FRONTEND=noninteractive dpkg --configure -a && sudo apt -f install
+	#sudo NEEDRESTART_MODE=a DEBIAN_FRONTEND=noninteractive apt-get -yqq install jq net-tools;
+	#sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libssl
+	cd /var/lib/dpkg/updates
+	sudo rm *
+	cd ~
+	sudo NEEDRESTART_MODE=a DEBIAN_FRONTEND=noninteractive apt-get -yqq update;
+	sudo NEEDRESTART_MODE=a DEBIAN_FRONTEND=noninteractive apt-get -yqq install -f;
+	sudo NEEDRESTART_MODE=a DEBIAN_FRONTEND=noninteractive apt-get -yqq install jq net-tools;
 }
 
 stage_apache ()

@@ -531,16 +531,6 @@ Resources:
     Properties:
       RepositoryName: !Ref ImageScanECRRepositoryName
 
-  # CodeCommitRepository:
-  #   Type: AWS::CodeCommit::Repository
-  #   Properties:
-  #     Code:
-  #       BranchName: !Ref BranchName
-  #       S3:
-  #         Bucket: !Ref S3CodeBucketName
-  #         Key: !Join ['/', [!Ref S3Prefix, !Ref S3CodeBucketKey] ] 
-  #     RepositoryDescription: !Ref RepositoryDescription
-  #     RepositoryName: !Ref ImageScanRepoName
 
   ImageScanCodePipelineArtifactStoreBucket:
     Type: 'AWS::S3::Bucket'
@@ -611,73 +601,6 @@ Resources:
                     - ':'
                     - !Ref ImageScanAppPipeline
 
-  # CodePipelineServiceRole:
-  #   Type: 'AWS::IAM::Role'
-  #   Properties:
-  #     PermissionsBoundary:
-  #       Fn::If:
-  #         - PermissionsBoundary
-  #         - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
-  #         - Ref: AWS::NoValue
-  #     AssumeRolePolicyDocument:
-  #       Version: 2012-10-17
-  #       Statement:
-  #         - Effect: Allow
-  #           Principal:
-  #             Service:
-  #               - codepipeline.amazonaws.com
-  #           Action: 'sts:AssumeRole'
-  #     Path: /
-  #     Policies:
-  #       - PolicyName: AWS-CodePipeline-Service-3
-  #         PolicyDocument:
-  #           Version: 2012-10-17
-  #           Statement:
-  #             - Effect: Allow
-  #               Action:
-  #                 - 'codecommit:CancelUploadArchive'
-  #                 - 'codecommit:GetBranch'
-  #                 - 'codecommit:GetCommit'
-  #                 - 'codecommit:GetUploadArchiveStatus'
-  #                 - 'codecommit:UploadArchive'
-  #               Resource: '*'
-  #             - Effect: Allow
-  #               Action:
-  #                 - 'codedeploy:CreateDeployment'
-  #                 - 'codedeploy:GetApplicationRevision'
-  #                 - 'codedeploy:GetDeployment'
-  #                 - 'codedeploy:GetDeploymentConfig'
-  #                 - 'codedeploy:RegisterApplicationRevision'
-  #               Resource: '*'
-  #             - Effect: Allow
-  #               Action:
-  #                 - 'codebuild:BatchGetBuilds'
-  #                 - 'codebuild:StartBuild'
-  #               Resource: '*'
-  #             - Effect: Allow
-  #               Action:
-  #                 - 'devicefarm:ListProjects'
-  #                 - 'devicefarm:ListDevicePools'
-  #                 - 'devicefarm:GetRun'
-  #                 - 'devicefarm:GetUpload'
-  #                 - 'devicefarm:CreateUpload'
-  #                 - 'devicefarm:ScheduleRun'
-  #               Resource: '*'
-  #             - Effect: Allow
-  #               Action:
-  #                 - 'lambda:InvokeFunction'
-  #                 - 'lambda:ListFunctions'
-  #               Resource: '*'
-  #             - Effect: Allow
-  #               Action:
-  #                 - 'iam:PassRole'
-  #               Resource: '*'
-  #             - Effect: Allow
-  #               Action:
-  #                 - 'ec2:*'
-  #                 - 'cloudwatch:*'
-  #                 - 's3:*'
-  #               Resource: '*'
   ImageScanAppPipeline:
     Type: 'AWS::CodePipeline::Pipeline'
     Properties:
@@ -719,56 +642,6 @@ Resources:
       ArtifactStore:
         Type: S3
         Location: !Ref ImageScanCodePipelineArtifactStoreBucket
-
-  # ECRCodeBuildServiceRole:
-  #   Type: AWS::IAM::Role
-  #   Properties:
-  #     PermissionsBoundary:
-  #       Fn::If:
-  #         - PermissionsBoundary
-  #         - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
-  #         - Ref: AWS::NoValue
-  #     AssumeRolePolicyDocument:
-  #       Version: 2012-10-17
-  #       Statement:
-  #         - Effect: Allow
-  #           Action:
-  #             - sts:AssumeRole
-  #           Principal:
-  #             Service:
-  #               - codebuild.amazonaws.com
-  # ECRCodeBuildServicePolicy:
-  #   Type: AWS::IAM::Policy
-  #   Properties:
-  #     PolicyName: ECRCodeBuildServicePolicy
-  #     Roles:
-  #       - !Ref ECRCodeBuildServiceRole
-  #     PolicyDocument:
-  #       Version: 2012-10-17
-  #       Statement:
-  #         - Effect: Allow
-  #           Action:
-  #             - logs:CreateLogGroup
-  #             - logs:CreateLogStream
-  #             - logs:PutLogEvents
-  #           Resource: "arn:aws:logs:*:*:*"
-  #         - Effect: Allow
-  #           Action:
-  #             - s3:GetObject
-  #             - s3:GetObjectVersion
-  #             - s3:PutObject
-  #           Resource:
-  #             - "*"
-  #         - Effect: Allow
-  #           Action:
-  #             - ecr:*
-  #           Resource:
-  #             - "*"
-  #         - Effect: Allow
-  #           Action:
-  #             - secretsmanager:*
-  #           Resource:
-  #             - !Ref SMFalconAPIKey
 
   ImageScanCodeBuildProject:
     Type: AWS::CodeBuild::Project
@@ -1081,4 +954,8 @@ Resources:
                   logging.error('Exception: {}'.format(error))
               finally:
                   cfnresponse.send(event, context, status, {}, None)
+
+Outputs:
+  SMFalconAPIKeyName:
+    Value: !Ref SMFalconAPIKey
 

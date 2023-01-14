@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Setup script to enable CrowdStrike Falcon Kubernetes Protection.
+Parameters:
+  PermissionsBoundary:
+    Type: String
+    Default: ''
+  RoleName:
+    Description: Read-only role for CrowdStrike Falcon Kubernetes Protection
+    Type: String
+    MinLength: '1'
+  ExternalID:
+    Description: External ID for created role
+    Type: String
+    MinLength: '2'
+  CSRoleName:
+    Description: Name of CrowdStrike assuming role
+    Type: String
+    MinLength: '10'
+  CSAccountNumber:
+    Description: Crowdstrike account number
+    Type: String
+    MinLength: '12'
+    MaxLength: '12'
+
+
+Conditions:
+  PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
+
+Resources:
+  CrowdStrikeKuberenetesProtectionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      PermissionsBoundary:
+        Fn::If:
+          - PermissionsBoundary
+          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+          - Ref: AWS::NoValue
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Join
+                - ''
+                - - 'arn:aws:iam::'
+                  - !Ref 'CSAccountNumber'
+                  - :role/
+                  - !Ref 'CSRoleName'
+            Condition:
+              StringEquals:
+                sts:ExternalId: !Ref 'ExternalID'
+            Action:
+              - sts:AssumeRole
+      RoleName: !Ref 'RoleName'
+      Policies:
+        - PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Resource: '*'
+                Action:
+                  - eks:Describe*
+                  - eks:List*
+                  - ec2:DescribeRegions
+                  - iam:GetRolePolicy
+                  - iam:ListRolePolicies
+                  - iam:GetRolePolicy
+                  - iam:ListAttachedRolePolicies
+                  - iam:GetPolicy
+                  - iam:GetPolicyVersion
+          PolicyName: kubernetes_protection_config
