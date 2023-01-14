@@ -83,12 +83,12 @@ Resources:
   ##
   ## Trigger the lambda function to provision/deprovision the account with CRWD using a CFT.
   ##
-#  TriggerRegisterAccountLambda:
-#    Type: 'Custom::TriggerLambda'
-#    Properties:
-#      ServiceToken: !GetAtt
-#        - RegisterK8sProAccount1
-#        - Arn
+  TriggerRegisterAccountLambda:
+    Type: 'Custom::TriggerLambda'
+    Properties:
+      ServiceToken: !GetAtt
+        - RegisterK8sProAccount1
+        - Arn
   #
   # Lambda function to provision/de provision the account with CRWD using a CFT.
   #
