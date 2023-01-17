@@ -20,13 +20,20 @@ function install_kubernetes_client_tools() {
 source <(/usr/local/bin/kubectl completion bash)
 EOF
     chmod +x /etc/profile.d/kubectl.sh
-    # curl --retry 5 -o helm.tar.gz https://get.helm.sh/helm-v3.3.4-linux-amd64.tar.gz
     curl --retry 5 -o helm.tar.gz https://get.helm.sh/helm-v3.10.3-linux-amd64.tar.gz
+    # curl --retry 5 -o helm.tar.gz https://get.helm.sh/helm-v3.8.2-linux-amd64.tar.gz
     tar -xvf helm.tar.gz
     chmod +x ./linux-amd64/helm
     mv ./linux-amd64/helm /usr/local/bin/helm
     ln -s /usr/local/bin/helm /opt/aws/bin
     rm -rf ./linux-amd64/
+# Install awscli v2
+    curl -O "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"
+    unzip -o awscli-exe-linux-x86_64.zip
+    sudo ./aws/install
+    rm awscli-exe-linux-x86_64.zip
+    mv /bin/aws /bin/aws.v1
+    ln -s /usr/local/aws-cli/v2/current/dist/aws /bin/aws
 }
 
 function setup_kubeconfig() {
@@ -82,7 +89,7 @@ EOF
 
 function setup_nodesensor_config(){
     cat >/tmp/node_sensor.yaml <<EOF
-apiVersion: falcon.crowdstrike.com/v1alpha1
+apiVersion: falcon.crowdstrike.com/v1beta1
 kind: FalconNodeSensor
 metadata:
   name: falcon-node-sensor
@@ -105,7 +112,7 @@ function setup_k8s_agent_config(){
 crowdstrikeConfig:
   clientID: ${CS_CLIENT_ID}
   clientSecret: ${CS_CLIENT_SECRET}
-  clusterName: "arn:aws:eks:${region}:${accountId}:cluster/${K8S_CLUSTER_NAME}"
+  clusterName: arn:aws:eks:${region}:${accountId}:cluster/${K8S_CLUSTER_NAME}
   env: ${CS_ENV}
   cid: ${CS_CID_LOWER}
   dockerAPIToken: ${DOCKER_API_TOKEN}
