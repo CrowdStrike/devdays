@@ -59,7 +59,7 @@ users:
 - name: ${clusterArn}
   user:
     exec:
-      apiVersion: client.authentication.k8s.io/v1alpha1
+      apiVersion: client.authentication.k8s.io/v1beta1
       command: aws
       args:
         - --region
@@ -89,7 +89,7 @@ EOF
 
 function setup_nodesensor_config(){
     cat >/tmp/node_sensor.yaml <<EOF
-apiVersion: falcon.crowdstrike.com/v1beta1
+apiVersion: falcon.crowdstrike.com/v1alpha1
 kind: FalconNodeSensor
 metadata:
   name: falcon-node-sensor
