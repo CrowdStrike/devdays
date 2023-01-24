@@ -8,7 +8,8 @@ function setup_environment_variables() {
 function install_kubernetes_client_tools() {
     printf "\nInstall K8s Client Tools"
     mkdir -p /usr/local/bin/
-    curl --retry 5 -o kubectl https://amazon-eks.s3-us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/linux/amd64/kubectl
+    # curl --retry 5 -o kubectl https://amazon-eks.s3-us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/linux/amd64/kubectl
+    curl --retry 5 -o kubectl https://s3.us-west-2.amazonaws.com/amazon-eks/1.23.13/2022-10-31/bin/linux/amd64/kubectl
     chmod +x ./kubectl
     mv ./kubectl /usr/local/bin/
     mkdir -p /root/bin
@@ -19,12 +20,20 @@ function install_kubernetes_client_tools() {
 source <(/usr/local/bin/kubectl completion bash)
 EOF
     chmod +x /etc/profile.d/kubectl.sh
-    curl --retry 5 -o helm.tar.gz https://get.helm.sh/helm-v3.3.4-linux-amd64.tar.gz
+    curl --retry 5 -o helm.tar.gz https://get.helm.sh/helm-v3.10.3-linux-amd64.tar.gz
+    # curl --retry 5 -o helm.tar.gz https://get.helm.sh/helm-v3.8.2-linux-amd64.tar.gz
     tar -xvf helm.tar.gz
     chmod +x ./linux-amd64/helm
     mv ./linux-amd64/helm /usr/local/bin/helm
     ln -s /usr/local/bin/helm /opt/aws/bin
     rm -rf ./linux-amd64/
+# Install awscli v2
+    curl -O "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"
+    unzip -o awscli-exe-linux-x86_64.zip
+    sudo ./aws/install
+    rm awscli-exe-linux-x86_64.zip
+    mv /bin/aws /bin/aws.v1
+    ln -s /usr/local/aws-cli/v2/current/dist/aws /bin/aws
 }
 
 function setup_kubeconfig() {
@@ -50,7 +59,7 @@ users:
 - name: ${clusterArn}
   user:
     exec:
-      apiVersion: client.authentication.k8s.io/v1alpha1
+      apiVersion: client.authentication.k8s.io/v1beta1
       command: aws
       args:
         - --region
@@ -75,6 +84,7 @@ EOF
     mkdir -p /home/ssm-user/.kube/
     cp /home/ec2-user/.kube/config /home/ssm-user/.kube/config
     chown -R ssm-user:ssm-user /home/ssm-user/
+    chmod -R og-rwx /home/ssm-user/.kube
 }
 
 function setup_nodesensor_config(){
@@ -102,7 +112,7 @@ function setup_k8s_agent_config(){
 crowdstrikeConfig:
   clientID: ${CS_CLIENT_ID}
   clientSecret: ${CS_CLIENT_SECRET}
-  clusterName: ${K8S_CLUSTER_NAME}
+  clusterName: arn:aws:eks:${region}:${accountId}:cluster/${K8S_CLUSTER_NAME}
   env: ${CS_ENV}
   cid: ${CS_CID_LOWER}
   dockerAPIToken: ${DOCKER_API_TOKEN}
