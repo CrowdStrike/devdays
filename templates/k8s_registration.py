@@ -267,8 +267,8 @@ def lambda_handler(event, context):
     logger.info('Got event {}'.format(event))
     logger.info('Context {}'.format(context))
 
-    # accountId = context.invoked_function_arn.split(":")[4]
-    accountId = '123456789212'
+    accountId = context.invoked_function_arn.split(":")[4]
+
     cft_client = boto3.client('cloudformation')
 
     secret_str = get_secret(secret_store_name, secret_store_region)
