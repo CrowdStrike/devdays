@@ -23,12 +23,6 @@ secret_store_region = os.environ['secret_store_region']
 K8S_ROLE_TEMPLATE = 'KPRole.yaml'
 K8S_STACK_NAME = 'CrowdStrike-Kubernetes-Protection-Integration'
 
-class AccountRegistrationException(Exception):
-    pass
-
-class AccountStatusException(Exception):
-    pass
-
 def get_secret(secret_name, secret_region):
     # Create a Secrets Manager client
     session = boto3.session.Session()
@@ -103,7 +97,6 @@ def cfnresponse_send(event, context, responseStatus, responseData, physicalResou
     except Exception as error:
         logger.info("Error {} sending CFN reponse: ".format(error))
 
-
 def get_params(url_string):
     """
 
@@ -132,7 +125,6 @@ def get_params(url_string):
     key_dict['ParameterValue'] = permissions_boundary
     cft_params.append(dict(key_dict))
     return cft_params
-
 
 def load_cft(CFT, params):
     """
@@ -185,7 +177,6 @@ def load_cft(CFT, params):
         logger.info('Exception creating K8s role template')
         return False
 
-
 def delete_cft(CFT):
     """
 
@@ -215,41 +206,6 @@ def delete_cft(CFT):
         return False
 
 
-def get_k8s_aws_account(account_id, k8s_client):
-    """
-
-    Args:
-        account_id string: AWS Account ID
-        k8s_client object: k8s API object
-
-    Returns: Dictionary
-
-    """
-    response = k8s_client.get_aws_accounts(ids=account_id)
-    if response['status_code'] == 200:
-        return response
-    elif response['status_code'] == 207:
-        return
-    else:
-        raise AccountStatusException()
-
-
-def register_k8s_aws_account(account_id, k8s_client, aws_region):
-    """
-
-    Args:
-        account_id:
-        k8s_client:
-
-    Returns Dict:
-
-    """
-    response = k8s_client.create_aws_account(account_id=account_id, region=aws_region)
-    if response['status_code'] != 201:
-        raise AccountRegistrationException(response['body']['errors'][0])
-    else:
-        return response
-
 
 def lambda_handler(event, context):
     """
@@ -267,8 +223,7 @@ def lambda_handler(event, context):
     logger.info('Got event {}'.format(event))
     logger.info('Context {}'.format(context))
 
-    # accountId = context.invoked_function_arn.split(":")[4]
-    accountId = '123456789211'
+    accountId = context.invoked_function_arn.split(":")[4]
     cft_client = boto3.client('cloudformation')
 
     secret_str = get_secret(secret_store_name, secret_store_region)
@@ -281,23 +236,19 @@ def lambda_handler(event, context):
                                   base_url=cs_cloud
                                   )
     if event['RequestType'] == 'Create':
-
         try:
-            #
-            # First check if account is already registered.
-            # If it is we will proceed without registration
-            #
-            k8s_acct_details = get_k8s_aws_account(accountId, falcon)
-            if not k8s_acct_details:
-                response = register_k8s_aws_account(accountId, falcon, aws_region)
-                # Now the account is registered we can get the details.
-                k8s_acct_details = get_k8s_aws_account(accountId, falcon)
-            url = k8s_acct_details['body']['resources'][0]['cloudformation_url']
-            cft_params_dict = get_params(url)
-            if load_cft(cft_client, cft_params_dict):
-                STATUS = 'SUCCESS'
+            response = falcon.create_aws_account(account_id=accountId, region=aws_region)
+            print(f'response to create {response}')
+            if response['status_code'] == 201:
+                acct_data = falcon.get_aws_accounts(ids=accountId)
+                print(f'Acct data {acct_data}')
+                url = acct_data['body']['resources'][0]['cloudformation_url']
+                cft_params_dict = get_params(url)
+                if load_cft(cft_client, cft_params_dict):
+                    STATUS = 'SUCCESS'
             else:
                 STATUS = 'FAILED'
+            pass
         except Exception as error:
             logger.info('Error {} registering k8s protection account'.format(error))
             STATUS = 'FAILED'
@@ -311,8 +262,7 @@ def lambda_handler(event, context):
             # Send CFN response Success anyway so that the stack deletion can continue
         except Exception as error:
             logger.info('Error {} deleting K8s protection account'.format(error))
-        STATUS = 'SUCCESS'
+        STATUS='SUCCESS'
 
     cfnresponse_send(event, context, STATUS, 'k8s_registration', "CustomResourcePhysicalID")
-
 
