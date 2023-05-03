@@ -48,8 +48,8 @@ Parameters:
   # Shared K8S Attributes
   KubernetesVersion:
     Type: String
-    AllowedValues: [ "1.21", "1.22", "1.23", "1.24" ]
-    Default: "1.23"
+    AllowedValues: [ "1.22", "1.23", "1.24", "1.25", "1.26" ]
+    Default: "1.24"
     Description: Kubernetes control plane version.
   # Optional
   RemoteAccessCIDR:
@@ -148,7 +148,6 @@ Resources:
           EksClusterName: !GetAtt EKSControlPlaneStack.Outputs.UniqueClusterName
           ClusterSecurityGroupId: !GetAtt EKSControlPlaneStack.Outputs.ClusterSecurityGroupId
 
-
   LoadBalancerStack:
       Type: AWS::CloudFormation::Stack
       DependsOn: EKSNodeGroupStack
@@ -205,35 +204,35 @@ Resources:
         TemplateBucket: !Ref S3Bucket
         S3Prefix: !Ref S3Prefix
         PermissionsBoundary: !Ref PermissionsBoundary
-  FigInstall:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub 'https://${S3Bucket}.s3.amazonaws.com/${S3Prefix}/fig.template.yaml'
-      Parameters:
-        FalconClientId: !Ref FalconClientID
-        FalconSecret: !Ref FalconClientSecret
-        PermissionsBoundary: !Ref PermissionsBoundary
-        VpcId: !GetAtt VPCStack.Outputs.VpcId
-        PublicSubnet1: !GetAtt VPCStack.Outputs.SubnetPublic1
-        RemoteAccessCIDR: !Ref RemoteAccessCIDR
-        S3Bucket: !Ref S3Bucket 
-        S3Prefix: !Ref S3Prefix
-        KeyPairName: !Ref KeyPairName
+  # FigInstall:
+  #   Type: AWS::CloudFormation::Stack
+  #   Properties:
+  #     TemplateURL: !Sub 'https://${S3Bucket}.s3.amazonaws.com/${S3Prefix}/fig.template.yaml'
+  #     Parameters:
+  #       FalconClientId: !Ref FalconClientID
+  #       FalconSecret: !Ref FalconClientSecret
+  #       PermissionsBoundary: !Ref PermissionsBoundary
+  #       VpcId: !GetAtt VPCStack.Outputs.VpcId
+  #       PublicSubnet1: !GetAtt VPCStack.Outputs.SubnetPublic1
+  #       RemoteAccessCIDR: !Ref RemoteAccessCIDR
+  #       S3Bucket: !Ref S3Bucket 
+  #       S3Prefix: !Ref S3Prefix
+  #       KeyPairName: !Ref KeyPairName
 
-  HorizonSetup:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub 'https://${S3Bucket}.s3.amazonaws.com/${S3Prefix}/horizon.yaml'
-      Parameters:
-        EnvAlias: !Ref EnvAlias
-        EnvHash:  !Ref EnvHash
-        S3Bucket: !Ref S3Bucket
-        S3Prefix: !Ref S3Prefix
-        KeyPairName: !Ref KeyPairName
-        CSCloud: !Ref CrowdStrikeCloud
-        FalconClientId: !Ref FalconClientID
-        FalconClientSecret: !Ref FalconClientSecret
-        PermissionsBoundary: !Ref PermissionsBoundary
+  # HorizonSetup:
+  #   Type: AWS::CloudFormation::Stack
+  #   Properties:
+  #     TemplateURL: !Sub 'https://${S3Bucket}.s3.amazonaws.com/${S3Prefix}/horizon.yaml'
+  #     Parameters:
+  #       EnvAlias: !Ref EnvAlias
+  #       EnvHash:  !Ref EnvHash
+  #       S3Bucket: !Ref S3Bucket
+  #       S3Prefix: !Ref S3Prefix
+  #       KeyPairName: !Ref KeyPairName
+  #       CSCloud: !Ref CrowdStrikeCloud
+  #       FalconClientId: !Ref FalconClientID
+  #       FalconClientSecret: !Ref FalconClientSecret
+  #       PermissionsBoundary: !Ref PermissionsBoundary
   SSMConfig:
     Type: AWS::CloudFormation::Stack
     Properties:
