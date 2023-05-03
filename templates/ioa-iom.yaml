@@ -35,6 +35,9 @@ Parameters:
     Default: 10.0.0.192/26
     Description: CIDR block for the public (DMZ) subnet 2, located in Availability Zone 2.
     Type: String
+  KeyPairName:
+    Description: EC2 key pair for SSH/RDP access
+    Type: String
 
 Resources:
 
@@ -125,7 +128,7 @@ Resources:
   bucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: cs-cloud-demo-public-s3
+      # BucketName: cs-cloud-demo-public-s3
       PublicAccessBlockConfiguration:
         BlockPublicAcls: false
         BlockPublicPolicy: false
@@ -182,7 +185,7 @@ Resources:
     Type: AWS::EC2::Instance
     Properties: 
       ImageId: !Ref PublicInstanceAMI
-      KeyName: "clints-demo-w2-key"
+      KeyName: !Ref KeyPairName
       IamInstanceProfile: !Ref permissiveEc2Profile
       SubnetId: !Ref PrivateSubnet1
       SecurityGroupIds:

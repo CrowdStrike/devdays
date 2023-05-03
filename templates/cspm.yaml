@@ -53,13 +53,16 @@ Parameters:
   EnableRegions:
     Type: CommaDelimitedList
     Description: Set regions for IOA Scanning
-    Default: 'us-east-1,us-east-2'
+    Default: 'us-east-1'
   StackSetAdminRole:
     Type: String
     Default: CNAPPStackSetAdminRole
   StackSetExecRole:
     Type: String
     Default: CNAPPStackSetExecRole
+  EnvHash:
+    Type: String
+
 
 Conditions:
   CreateIOAResources: !Equals [ !Ref 'EnableIOA', true ]
@@ -84,7 +87,7 @@ Resources:
     Type: AWS::IAM::Role
     Condition: CreateIOAResources
     Properties:
-      RoleName: !Ref StackSetAdminRole
+      RoleName: !Sub ${StackSetAdminRole}-${EnvHash}
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -99,7 +102,7 @@ Resources:
             Version: '2012-10-17'
             Statement:
               - Action: sts:AssumeRole
-                Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${StackSetExecRole}
+                Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${StackSetExecRole}-${EnvHash}
                 Effect: Allow
   StackSetExecutionRole:
     Type: AWS::IAM::Role
@@ -112,13 +115,13 @@ Resources:
             - EIAMPolicyWildcardResource # Role has * to allow for future service monitoring without stack updates
             - EIAMPolicyActionWildcard # Role has * to allow for future service monitoring without stack updates
     Properties:
-      RoleName: !Ref StackSetExecRole
+      RoleName: !Sub ${StackSetExecRole}-${EnvHash}
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
           Action: sts:AssumeRole
           Principal:
-            AWS: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${StackSetAdminRole} 
+            AWS: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${StackSetAdminRole}-${EnvHash}
           Effect: Allow
           Sid: ''
       Policies:
@@ -526,8 +529,8 @@ Resources:
     Condition: CreateIOAResources
     Type: 'AWS::CloudFormation::StackSet'
     Properties:      
-      AdministrationRoleARN: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${StackSetAdminRole}
-      ExecutionRoleName: !Ref StackSetExecRole
+      AdministrationRoleARN: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${StackSetAdminRole}-${EnvHash}
+      ExecutionRoleName: !Sub ${StackSetExecRole}-${EnvHash}
       StackSetName: "CrowdStrike-Horizon-EB-Stackset"
       Parameters:
         - ParameterKey: CSAccountNumber

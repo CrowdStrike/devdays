@@ -28,7 +28,7 @@ Parameters:
   # Environment Vars
   EnvAlias:
     Type: String
-    Default: 'devdays-cnap'
+    Default: 'cloud-sec'
   EnvHash:
     Type: String
     Default: ''
@@ -233,6 +233,34 @@ Resources:
   #       FalconClientId: !Ref FalconClientID
   #       FalconClientSecret: !Ref FalconClientSecret
   #       PermissionsBoundary: !Ref PermissionsBoundary
+
+  CSPMSetup:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://${S3Bucket}.s3.amazonaws.com/${S3Prefix}/cspm.yaml'
+      Parameters:
+        # EnvAlias: !Ref EnvAlias
+        EnvHash:  !Ref EnvHash
+        # S3Bucket: !Ref S3Bucket
+        # S3Prefix: !Ref S3Prefix
+        # KeyPairName: !Ref KeyPairName
+        CSCloud: !Ref CrowdStrikeCloud
+        FalconClientID: !Ref FalconClientID
+        FalconSecret: !Ref FalconClientSecret
+        PermissionsBoundary: !Ref PermissionsBoundary
+
+  IOAIOMSetup:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://${S3Bucket}.s3.amazonaws.com/${S3Prefix}/ioa-iom.yaml'
+      Parameters:
+        # EnvAlias: !Ref EnvAlias
+        EnvHash:  !Ref EnvHash
+        # S3Bucket: !Ref S3Bucket
+        # S3Prefix: !Ref S3Prefix
+        KeyPairName: !Ref KeyPairName
+        PermissionsBoundary: !Ref PermissionsBoundary
+
   SSMConfig:
     Type: AWS::CloudFormation::Stack
     Properties:
