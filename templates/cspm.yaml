@@ -41,7 +41,7 @@ Parameters:
   CSCloud:
     Type: String
     Default: us1
-    AllowedValues: [ "us1", "us2", "eu1" ]
+    AllowedValues: [ "us1", "us2", "eu1", "us-1", "us-2", "eu-1" ]
     Description: The Cloud your Falcon CID is hosted in
   EnableIOA:
     Type: String
