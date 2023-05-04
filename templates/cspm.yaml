@@ -40,8 +40,8 @@ Parameters:
     Type: String
   CSCloud:
     Type: String
-    Default: us1
-    AllowedValues: [ "us1", "us2", "eu1", "us-1", "us-2", "eu-1" ]
+    Default: us-1
+    AllowedValues: [ "us-1", "us-2", "eu-1" ]
     Description: The Cloud your Falcon CID is hosted in
   EnableIOA:
     Type: String
@@ -69,15 +69,15 @@ Conditions:
 
 Mappings:
   CrowdStrikeCSPMRoleTemplateURL:
-    us1:
+    us-1:
       CSAccountNumber: "292230061137"
       StackName: "CrowdStrike-CSPM-Integration"
       CSRoleName: "CrowdStrikeCSPMConnector"
-    us2:
+    us-2:
       CSAccountNumber: "292230061137"
       StackName: "CrowdStrike-CSPM-Integration"
       CSRoleName: "CrowdStrikeCSPMConnector"
-    eu:
+    eu-1:
       CSAccountNumber: "292230061137"
       StackName: "CrowdStrike-CSPM-Integration"
       CSRoleName: "CrowdStrikeCSPMConnector"
