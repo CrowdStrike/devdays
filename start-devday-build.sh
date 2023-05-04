@@ -6,7 +6,7 @@ env_up(){
    
     #git clone https://github.com/CrowdStrike/devdays.git
 
-   EnvHash=$(LC_ALL=C tr -dc a-z0-9 </dev/urandom | head -c 6)
+   EnvHash=$(LC_ALL=C tr -dc a-z0-9 </dev/urandom | head -c 5)
    S3Bucket=cloudsec-stack-${EnvHash}
    AWS_REGION='us-east-1'
    S3Prefix='templates'
@@ -69,7 +69,7 @@ env_up(){
    ParameterKey=EnvHash,ParameterValue=$EnvHash
 
     echo -e "The Cloudformation stack will take 20-30 minutes to complete.$NC"
-    echo -e "\n\nCheck the status at any time with the command \n\naws cloudformation describe-stacks --stack-name devdays-cnap-stack --region $AWS_REGION$NC\n\n"
+    echo -e "\n\nCheck the status at any time with the command \n\naws cloudformation describe-stacks --stack-name $StackName --region $AWS_REGION$NC\n\n"
     #sleep 5
     #id=`curl -s http://169.254.169.254/latest/meta-data/instance-id`
     #aws ec2 terminate-instances --region $AWS_REGION --instance-ids $id
