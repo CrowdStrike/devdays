@@ -38,6 +38,10 @@ Parameters:
   KeyPairName:
     Description: EC2 key pair for SSH/RDP access
     Type: String
+  InstanceType: 
+    Type: String
+    Default: t2.small    
+
 
 Resources:
 
@@ -186,6 +190,7 @@ Resources:
     Properties: 
       ImageId: !Ref PublicInstanceAMI
       KeyName: !Ref KeyPairName
+      InstanceType: !Ref InstanceType
       IamInstanceProfile: !Ref permissiveEc2Profile
       SubnetId: !Ref PrivateSubnet1
       SecurityGroupIds:
