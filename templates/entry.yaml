@@ -55,6 +55,9 @@ Parameters:
   RemoteAccessCIDR:
     Type: String
     Default: 1.1.1.1/32
+  AMIReleaseVersion:
+    Type: String
+    Default: "1.24.11-20230411"
 
 Resources:
 
@@ -147,6 +150,7 @@ Resources:
           SubnetPrivate2: !GetAtt VPCStack.Outputs.SubnetPrivate2
           EksClusterName: !GetAtt EKSControlPlaneStack.Outputs.UniqueClusterName
           ClusterSecurityGroupId: !GetAtt EKSControlPlaneStack.Outputs.ClusterSecurityGroupId
+          ReleaseVersion: !Ref AMIReleaseVersion
 
   LoadBalancerStack:
       Type: AWS::CloudFormation::Stack
