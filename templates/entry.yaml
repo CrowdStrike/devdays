@@ -39,9 +39,9 @@ Parameters:
   S3Prefix:
     Type: String
     Default: 'templates'
-  PermissionsBoundary:
-    Type: String
-    Default: 'BoundaryForAdministratorAccess'
+  # PermissionsBoundary:
+  #   Type: String
+  #   Default: 'BoundaryForAdministratorAccess'
   KeyPairName:
     Type: String
     Default: ''
@@ -66,7 +66,7 @@ Resources:
         EnvAlias: !Ref EnvAlias
         EnvHash: !Ref EnvHash
         S3Bucket: !Ref S3Bucket
-        PermissionsBoundary: !Ref PermissionsBoundary
+        # PermissionsBoundary: !Ref PermissionsBoundary
 
   VPCStack:
     Type: AWS::CloudFormation::Stack
@@ -76,7 +76,7 @@ Resources:
       Parameters:
         EnvAlias: !Ref EnvAlias
         EnvHash: !Ref EnvHash
-        PermissionsBoundary: !Ref PermissionsBoundary
+        # PermissionsBoundary: !Ref PermissionsBoundary
         S3Bucket: !Ref S3Bucket
   
   EKSControlPlaneStack:
@@ -87,7 +87,7 @@ Resources:
         Parameters:
           EnvAlias: !Ref EnvAlias
           EnvHash: !Ref EnvHash
-          PermissionsBoundary: !Ref PermissionsBoundary
+          # PermissionsBoundary: !Ref PermissionsBoundary
           BastionRole: !GetAtt IAMStack.Outputs.BastionHostRole
           VpcId: !GetAtt VPCStack.Outputs.VpcId
           SubnetPrivate1: !GetAtt VPCStack.Outputs.SubnetPrivate1
@@ -106,7 +106,7 @@ Resources:
       Parameters:
         EnvAlias: !Ref EnvAlias
         EnvHash: !Ref EnvHash
-        PermissionsBoundary: !Ref PermissionsBoundary
+        # PermissionsBoundary: !Ref PermissionsBoundary
         OIDCIssuerURLWithoutProtocol: !GetAtt EKSControlPlaneStack.Outputs.OIDCIssuerURLWithoutProtocol
 
   CodePipelineStack:
@@ -131,7 +131,7 @@ Resources:
         EKSCodeBuildServiceRoleArn: !GetAtt IAMStack.Outputs.EKSCodeBuildServiceRoleArn
         EKSClusterName: !GetAtt EKSControlPlaneStack.Outputs.UniqueClusterName
         PodS3AccessRoleArn: !GetAtt PodIamRoleStack.Outputs.PodS3AccessRoleArn
-        PermissionsBoundary: !Ref PermissionsBoundary
+        # PermissionsBoundary: !Ref PermissionsBoundary
         WafRulesARN: !GetAtt WAFRules.Outputs.WebACLARN
 
   EKSNodeGroupStack:
@@ -142,7 +142,7 @@ Resources:
         Parameters:
           EnvAlias: !Ref EnvAlias
           EnvHash:  !Ref EnvHash
-          PermissionsBoundary: !Ref PermissionsBoundary
+          # PermissionsBoundary: !Ref PermissionsBoundary
           SubnetPrivate1: !GetAtt VPCStack.Outputs.SubnetPrivate1
           SubnetPrivate2: !GetAtt VPCStack.Outputs.SubnetPrivate2
           EksClusterName: !GetAtt EKSControlPlaneStack.Outputs.UniqueClusterName
@@ -156,7 +156,7 @@ Resources:
         Parameters:
           EnvAlias: !Ref EnvAlias
           EnvHash:  !Ref EnvHash
-          PermissionsBoundary: !Ref PermissionsBoundary
+          # PermissionsBoundary: !Ref PermissionsBoundary
           VpcId: !GetAtt VPCStack.Outputs.VpcId
           OIDCIssuerURLWithoutProtocol: !GetAtt EKSControlPlaneStack.Outputs.OIDCIssuerURLWithoutProtocol
           EksClusterName: !GetAtt EKSControlPlaneStack.Outputs.UniqueClusterName
@@ -192,7 +192,7 @@ Resources:
         PublicSubnetCIDR: !GetAtt VPCStack.Outputs.PublicSubnet1CIDROut
         NATGatewayEIP: !GetAtt VPCStack.Outputs.NATGatewayEIP
         RemoteAccessCIDR: !Ref RemoteAccessCIDR
-        PermissionsBoundary: !Ref PermissionsBoundary
+        # PermissionsBoundary: !Ref PermissionsBoundary
 
   ConfidentialBucket:
     Type: AWS::CloudFormation::Stack
@@ -203,7 +203,7 @@ Resources:
         EnvHash:  !Ref EnvHash
         TemplateBucket: !Ref S3Bucket
         S3Prefix: !Ref S3Prefix
-        PermissionsBoundary: !Ref PermissionsBoundary
+        # PermissionsBoundary: !Ref PermissionsBoundary
   # FigInstall:
   #   Type: AWS::CloudFormation::Stack
   #   Properties:
