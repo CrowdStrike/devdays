@@ -5,9 +5,9 @@ Metadata:
   cfn-lint: { config: { ignore_checks: [W9002, W9003, W9004, W9006, E9007, E9008] } }
 
 Parameters:
-  PermissionsBoundary:
-    Type: String
-    Default: ''
+  # PermissionsBoundary:
+  #   Type: String
+  #   Default: ''
   EksClusterName:
     Type: String
     Default: ''
@@ -33,7 +33,7 @@ Parameters:
     Default: ''
 
 Conditions:
-  PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
+  # PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
   WantsContainer: !Equals [!Ref FalconSensorType, 'FalconContainer']
   WantsNodeSensor: !Equals [!Ref FalconSensorType, 'FalconNodeSensor']
 

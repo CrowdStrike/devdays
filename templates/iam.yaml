@@ -2,9 +2,9 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: Creates shared IAM resources.
 
 Parameters:
-  PermissionsBoundary:
-    Type: String
-    Default: ''
+  # PermissionsBoundary:
+  #   Type: String
+  #   Default: ''
   EnvAlias:
     Type: String
     Default: ''
@@ -15,8 +15,8 @@ Parameters:
     Type: String
     Default: ''
 
-Conditions:
-  PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
+# Conditions:
+#   PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
 
 Resources:
   #
@@ -31,11 +31,11 @@ Resources:
   ResourceReaderRole:
     Type: AWS::IAM::Role
     Properties:
-      PermissionsBoundary:
-        Fn::If:
-          - PermissionsBoundary
-          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
-          - Ref: AWS::NoValue
+      # PermissionsBoundary:
+      #   Fn::If:
+      #     - PermissionsBoundary
+      #     - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+      #     - Ref: AWS::NoValue
       RoleName: !Sub '${EnvAlias}-ResourceReader'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -60,11 +60,11 @@ Resources:
               \ more than 1 eks qs deployment and as such resource names that will\
               \ only be created in the future are unknown\n"
     Properties:
-      PermissionsBoundary:
-        Fn::If:
-          - PermissionsBoundary
-          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
-          - Ref: AWS::NoValue
+      # PermissionsBoundary:
+      #   Fn::If:
+      #     - PermissionsBoundary
+      #     - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+      #     - Ref: AWS::NoValue
       RoleName: !Sub '${EnvAlias}-GetCallerArn'
       AssumeRolePolicyDocument:
         Statement:
@@ -105,11 +105,11 @@ Resources:
               \ more than 1 eks qs deployment and as such resource names that will\
               \ only be created in the future are unknown\n"
     Properties:
-      PermissionsBoundary:
-        Fn::If:
-          - PermissionsBoundary
-          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
-          - Ref: AWS::NoValue
+      # PermissionsBoundary:
+      #   Fn::If:
+      #     - PermissionsBoundary
+      #     - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+      #     - Ref: AWS::NoValue
       RoleName: !Sub '${EnvAlias}-NodeSG'
       ManagedPolicyArns:
         - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
@@ -134,11 +134,11 @@ Resources:
   ExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      PermissionsBoundary:
-        Fn::If:
-          - PermissionsBoundary
-          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
-          - Ref: AWS::NoValue
+      # PermissionsBoundary:
+      #   Fn::If:
+      #     - PermissionsBoundary
+      #     - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+      #     - Ref: AWS::NoValue
       MaxSessionDuration: 8400
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -176,11 +176,11 @@ Resources:
   LogDeliveryRole:
     Type: AWS::IAM::Role
     Properties:
-      PermissionsBoundary:
-        Fn::If:
-          - PermissionsBoundary
-          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
-          - Ref: AWS::NoValue
+      # PermissionsBoundary:
+      #   Fn::If:
+      #     - PermissionsBoundary
+      #     - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+      #     - Ref: AWS::NoValue
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -241,11 +241,11 @@ Resources:
   EKSCodeBuildServiceRole:
     Type: AWS::IAM::Role
     Properties:
-      PermissionsBoundary:
-        Fn::If:
-          - PermissionsBoundary
-          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
-          - Ref: AWS::NoValue
+      # PermissionsBoundary:
+      #   Fn::If:
+      #     - PermissionsBoundary
+      #     - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+      #     - Ref: AWS::NoValue
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -294,11 +294,11 @@ Resources:
   EKSQSExtentionServiceRole:
     Type: AWS::IAM::Role
     Properties:
-      PermissionsBoundary:
-        Fn::If:
-          - PermissionsBoundary
-          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
-          - Ref: AWS::NoValue
+      # PermissionsBoundary:
+      #   Fn::If:
+      #     - PermissionsBoundary
+      #     - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+      #     - Ref: AWS::NoValue
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -365,11 +365,11 @@ Resources:
           ignore_reasons:
             EIAMPolicyWildcardResource: "resource does not exist at time of policy creation, so it's address is unkown"
     Properties:
-      PermissionsBoundary:
-        Fn::If:
-          - PermissionsBoundary
-          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
-          - Ref: AWS::NoValue
+      # PermissionsBoundary:
+      #   Fn::If:
+      #     - PermissionsBoundary
+      #     - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+      #     - Ref: AWS::NoValue
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:

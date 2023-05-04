@@ -9,9 +9,9 @@ Parameters:
   EnvHash:
     Type: String
     Default: ''
-  PermissionsBoundary:
-    Type: String
-    Default: ''
+  # PermissionsBoundary:
+  #   Type: String
+  #   Default: ''
   VPCCIDR:
     AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
     ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16–28
@@ -50,8 +50,8 @@ Parameters:
     Default: CRWD-Demo-Domain-rg
     Type: String
 
-Conditions:
-  PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
+# Conditions:
+#   PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
 
 Resources:
   InternetGateway:
@@ -264,11 +264,11 @@ Resources:
   FlowLogRole:
     Type: 'AWS::IAM::Role'
     Properties:
-      PermissionsBoundary:
-        Fn::If:
-          - PermissionsBoundary
-          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
-          - Ref: AWS::NoValue
+      # PermissionsBoundary:
+      #   Fn::If:
+      #     - PermissionsBoundary
+      #     - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+      #     - Ref: AWS::NoValue
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:

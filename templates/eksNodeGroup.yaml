@@ -9,9 +9,9 @@ Parameters:
   EnvHash:
     Type: String
     Default: ''
-  PermissionsBoundary:
-    Type: String
-    Default: ''
+  # PermissionsBoundary:
+  #   Type: String
+  #   Default: ''
   SubnetPrivate1:
     Type: String
     Default: ''
@@ -40,8 +40,8 @@ Mappings:
       EKS: eks.amazonaws.com
       EKSFargatePods: eks-fargate-pods.amazonaws.com
 
-Conditions:
-  PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
+# Conditions:
+  # PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
 
 Resources:
   LaunchTemplate:
@@ -149,11 +149,11 @@ Resources:
   NodeInstanceRole:
     Type: AWS::IAM::Role
     Properties:
-      PermissionsBoundary:
-        Fn::If:
-          - PermissionsBoundary
-          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
-          - Ref: AWS::NoValue
+      # PermissionsBoundary:
+      #   Fn::If:
+      #     - PermissionsBoundary
+      #     - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+      #     - Ref: AWS::NoValue
       AssumeRolePolicyDocument:
         Statement:
         - Action:

@@ -12,9 +12,9 @@ Parameters:
   EnvHash:
     Type: String
     Default: ''
-  PermissionsBoundary:
-    Type: String
-    Default: ''
+  # PermissionsBoundary:
+  #   Type: String
+  #   Default: ''
   OIDCIssuerURLWithoutProtocol:
     Type: String
     Default: ''
@@ -41,7 +41,7 @@ Parameters:
 
 Conditions:
   HostNetworkEnabled: !Equals [ !Ref ControllerHostNetwork, Enabled ]
-  PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
+  # PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
 
 Mappings:
   RegionMap:
@@ -106,11 +106,11 @@ Resources:
           ignore_reasons:
             EIAMPolicyWildcardResource: "resources are created dynamically by the k8s cloud controller, and aren't known at the time of policy creation"
     Properties:
-      PermissionsBoundary:
-        Fn::If:
-          - PermissionsBoundary
-          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
-          - Ref: AWS::NoValue
+      # PermissionsBoundary:
+      #   Fn::If:
+      #     - PermissionsBoundary
+      #     - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+      #     - Ref: AWS::NoValue
       AssumeRolePolicyDocument: !Sub |
         {
           "Version": "2012-10-17",

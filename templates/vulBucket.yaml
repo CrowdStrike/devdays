@@ -6,9 +6,9 @@ Parameters:
   EnvHash:
     Type: String
     Default: ''
-  PermissionsBoundary:
-    Type: String
-    Default: ''
+  # PermissionsBoundary:
+  #   Type: String
+  #   Default: ''
   TemplateBucket:
     Type: String
     Default: ''
@@ -18,8 +18,8 @@ Parameters:
   SourceObjects:
     Type: CommaDelimitedList
     Default: "confidential-data.txt, Dev.Days"
-Conditions:
-  PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
+# Conditions:
+  # PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
 Resources:
   ConfidentialBucket:
     Type: 'AWS::S3::Bucket'
@@ -39,11 +39,11 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       Path: /
-      PermissionsBoundary:
-        Fn::If:
-          - PermissionsBoundary
-          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
-          - Ref: AWS::NoValue
+      # PermissionsBoundary:
+      #   Fn::If:
+      #     - PermissionsBoundary
+      #     - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+          # - Ref: AWS::NoValue
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -133,11 +133,11 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       Path: /
-      PermissionsBoundary:
-        Fn::If:
-          - PermissionsBoundary
-          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
-          - Ref: AWS::NoValue
+      # PermissionsBoundary:
+      #   Fn::If:
+      #     - PermissionsBoundary
+      #     - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+          # - Ref: AWS::NoValue
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:

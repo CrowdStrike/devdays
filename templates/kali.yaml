@@ -17,9 +17,9 @@ Parameters:
   S3Prefix:
     Type: String
     Default: ''
-  PermissionsBoundary:
-    Type: String
-    Default: ''
+  # PermissionsBoundary:
+  #   Type: String
+  #   Default: ''
   Owner:
     Type: String
     Description: Owner/Creator of resource
@@ -72,8 +72,8 @@ Parameters:
     #    us-east-1: ami-0bdd2b5c137d42cef - copy of official Kali community image to bypass marketplace restrictions in EventEngine
     Default: ami-0bdd2b5c137d42cef
     
-Conditions:
-  PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
+# Conditions:
+#   PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
   
 Resources:
   Kali:
@@ -230,11 +230,11 @@ Resources:
   KaliIAMRole:
     Type: AWS::IAM::Role
     Properties:
-      PermissionsBoundary:
-        Fn::If:
-          - PermissionsBoundary
-          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
-          - Ref: AWS::NoValue
+      # PermissionsBoundary:
+      #   Fn::If:
+      #     - PermissionsBoundary
+      #     - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
+      #     - Ref: AWS::NoValue
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
