@@ -62,6 +62,9 @@ Parameters:
     Default: CNAPPStackSetExecRole
   EnvHash:
     Type: String
+  TrailName:
+    Type: String
+    Default: "cloudsec-trail"
 
 
 Conditions:
@@ -544,90 +547,131 @@ Resources:
               - !Ref AWS::AccountId
           Regions: !Ref EnableRegions
       TemplateBody: |
-        {
-          "AWSTemplateFormatVersion": "2010-09-09",
-          "Description": "Create EventBridge Rules to enable CrowdStrike Falcon CSPM",
-          "Parameters": {
-              "CSAccountNumber": {
-                  "Description": "Crowdstrike account number",
-                  "Type": "String",
-                  "MinLength": 12,
-                  "MaxLength": 12
-              },
-              "CSEventBusName": {
-                  "Description": "CrowdStrike Event Bridge Name",
-                  "Type": "String"
-              }
-          },
-          "Resources": {
-              "CrowdStrikeEventBusRule": {
-                  "Type": "AWS::Events::Rule",
-                  "Properties": {
-                      "Name": "cs-cloudtrail-events-ioa-rule",
-                      "EventPattern": {
-                          "detail-type": [
-                              "AWS API Call via CloudTrail",
-                              "AWS Console Sign In via CloudTrail",
-                              "AWS Service Event via CloudTrail"
-                          ],
-                          "detail": {
-                              "eventName": {
-                                  "anything-but": [
-                                      "InvokeExecution"
-                                  ]
+                        {
+                          "AWSTemplateFormatVersion": "2010-09-09",
+                          "Description": "Create EventBridge Rules to enable CrowdStrike Falcon CSPM",
+                          "Parameters": {
+                              "CSAccountNumber": {
+                                  "Description": "Crowdstrike account number",
+                                  "Type": "String",
+                                  "MinLength": 12,
+                                  "MaxLength": 12
                               },
-                              "readOnly": [
-                                  false
-                              ]
+                              "CSEventBusName": {
+                                  "Description": "CrowdStrike Event Bridge Name",
+                                  "Type": "String"
+                              }
+                          },
+                          "Resources": {
+                              "CrowdStrikeEventBusRule": {
+                                  "Type": "AWS::Events::Rule",
+                                  "Properties": {
+                                      "Name": "cs-cloudtrail-events-ioa-rule",
+                                      "EventPattern": {
+                                            "source": [{
+                                              "prefix": "aws."
+                                            }],
+                                            "detail-type": [{
+                                              "suffix": "via CloudTrail"
+                                            }],
+                                            "detail": {
+                                              "eventName": [{
+                                                "anything-but": ["InvokeExecution"]
+                                              }],
+                                              "readOnly": [false]
+                                            }
+                                      },
+                                      "State": "ENABLED",
+                                      "Targets": [
+                                          {
+                                              "Arn": {
+                                                  "Fn::Sub": "arn:aws:events:${AWS::Region}:${CSAccountNumber}:event-bus/${CSEventBusName}"
+                                              },
+                                              "RoleArn": {
+                                                  "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/CrowdStrikeCSPMEventBridge"
+                                              },
+                                              "Id": "CrowdStrikeCentralizeEvents"
+                                          }
+                                      ]
+                                  }
+                              },
+                              "CrowdStrikeEventBusRuleRO": {
+                                  "Type": "AWS::Events::Rule",
+                                  "Properties": {
+                                      "Name": "cs-cloudtrail-events-readonly-rule",
+                                      "EventPattern": {
+                                          "detail-type": [
+                                              "AWS API Call via CloudTrail",
+                                              "AWS Console Sign In via CloudTrail",
+                                              "AWS Service Event via CloudTrail"
+                                          ],
+                                          "detail": {
+                                              "readOnly": [
+                                                  true
+                                              ]
+                                          }
+                                      },
+                                      "State": "ENABLED",
+                                      "Targets": [
+                                          {
+                                              "Arn": {
+                                                  "Fn::Sub": "arn:aws:events:${AWS::Region}:${CSAccountNumber}:event-bus/${CSEventBusName}"
+                                              },
+                                              "RoleArn": {
+                                                  "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/CrowdStrikeCSPMEventBridge"
+                                              },
+                                              "Id": "CrowdStrikeCentralizeEvents"
+                                          }
+                                      ]
+                                  }
+                              }
                           }
-                      },
-                      "State": "ENABLED",
-                      "Targets": [
-                          {
-                              "Arn": {
-                                  "Fn::Sub": "arn:aws:events:${AWS::Region}:${CSAccountNumber}:event-bus/${CSEventBusName}"
-                              },
-                              "RoleArn": {
-                                  "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/CrowdStrikeCSPMEventBridge"
-                              },
-                              "Id": "CrowdStrikeCentralizeEvents"
-                          }
-                      ]
-                  }
-              },
-              "CrowdStrikeEventBusRuleRO": {
-                  "Type": "AWS::Events::Rule",
-                  "Properties": {
-                      "Name": "cs-cloudtrail-events-readonly-rule",
-                      "EventPattern": {
-                          "detail-type": [
-                              "AWS API Call via CloudTrail",
-                              "AWS Console Sign In via CloudTrail",
-                              "AWS Service Event via CloudTrail"
-                          ],
-                          "detail": {
-                              "readOnly": [
-                                  true
-                              ]
-                          }
-                      },
-                      "State": "ENABLED",
-                      "Targets": [
-                          {
-                              "Arn": {
-                                  "Fn::Sub": "arn:aws:events:${AWS::Region}:${CSAccountNumber}:event-bus/${CSEventBusName}"
-                              },
-                              "RoleArn": {
-                                  "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/CrowdStrikeCSPMEventBridge"
-                              },
-                              "Id": "CrowdStrikeCentralizeEvents"
-                          }
-                      ]
-                  }
-              }
-          }
-        }
-
+                        }
+# Create trail, bucket, and bucket policy to enable EB event collection
+  TrailBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    Properties:
+      AccessControl: Private
+  Trail:
+    Type: AWS::CloudTrail::Trail
+    DependsOn: BucketPolicy
+    Properties:
+      S3BucketName: !Ref TrailBucket
+      IsLogging: true
+      TrailName: !Sub ${TrailName}-${EnvHash}
+      IncludeGlobalServiceEvents: true
+      IsMultiRegionTrail: true
+      S3KeyPrefix: cloudtrail-logs
+      EventSelectors:
+        - IncludeManagementEvents: true
+  BucketPolicy:  
+    Type: AWS::S3::BucketPolicy
+    Properties: 
+      Bucket: !Ref TrailBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: AWSCloudTrailAclCheck20150319
+          Effect: Allow
+          Principal:
+            Service: cloudtrail.amazonaws.com
+          Action: s3:GetBucketAcl
+          Resource: !Sub arn:aws:s3:::${TrailBucket}
+          Condition:
+            StringEquals:
+              AWS:SourceArn: !Sub arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/${TrailName}-${EnvHash}
+        - Sid: AWSCloudTrailWrite20150319
+          Effect: Allow
+          Principal:
+            Service: cloudtrail.amazonaws.com
+          Action: s3:PutObject
+          Resource: !Sub arn:aws:s3:::${TrailBucket}/*
+          Condition:
+            StringEquals:
+              s3:x-amz-acl: bucket-owner-full-control
+              AWS:SourceArn: !Sub arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/${TrailName}-${EnvHash}
+              
 # Create Lambda and Supporting Resources to register Account
   CrowdStrikeSecrets:
     Type: AWS::SecretsManager::Secret
