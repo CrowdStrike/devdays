@@ -159,6 +159,7 @@ Resources:
                 - 'elasticloadbalancing:DescribeTargetGroupAttributes'
                 - 'elasticloadbalancing:DescribeTargetHealth'
                 - 'elasticloadbalancing:DescribeTags'
+                - 'elasticloadbalancing:AddTags'
               Resource: '*'
             - Effect: Allow
               Action:
