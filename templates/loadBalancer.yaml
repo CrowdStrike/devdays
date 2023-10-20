@@ -147,6 +147,7 @@ Resources:
                 - 'ec2:DescribeInstances'
                 - 'ec2:DescribeNetworkInterfaces'
                 - 'ec2:DescribeTags'
+                - 'ec2:CreateTags'
                 - 'ec2:GetCoipPoolUsage'
                 - 'ec2:DescribeCoipPools'
                 - 'elasticloadbalancing:DescribeLoadBalancers'
@@ -159,6 +160,7 @@ Resources:
                 - 'elasticloadbalancing:DescribeTargetGroupAttributes'
                 - 'elasticloadbalancing:DescribeTargetHealth'
                 - 'elasticloadbalancing:DescribeTags'
+                - 'elasticloadbalancing:AddTags'
               Resource: '*'
             - Effect: Allow
               Action:
