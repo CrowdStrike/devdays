@@ -17,7 +17,7 @@ Parameters:
     Default: ''
   SourceObjects:
     Type: CommaDelimitedList
-    Default: "confidential-data.txt, Dev.Days"
+    Default: "confidential-data.txt"
 # Conditions:
   # PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
 Resources:

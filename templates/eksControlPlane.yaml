@@ -25,11 +25,11 @@ Parameters:
     Type: String
   EKSCodeBuildServiceRoleArn:
     Type: String
-  EKSQSExtentionRoleArn:
-    Type: String
+  # EKSQSExtentionRoleArn:
+  #   Type: String
   Username:
     Type: String
-    Default: "wus-cloudshare"
+    Default: "fcs-lab"
     Description: IAM User who will be mapped system:masters
   KubernetesVersion:
     Type: String
@@ -68,7 +68,7 @@ Resources:
         - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonEKSServicePolicy'
 
   Cluster:
-    Type: AWSQS::EKS::Cluster
+    Type: AWS::EKS::Cluster
     Metadata:
       cfn-lint:
         config:
@@ -87,39 +87,39 @@ Resources:
           - !Ref SubnetPrivate2
       RoleArn: !GetAtt serviceRole.Arn
       Version: !Ref KubernetesVersion
-      KubernetesApiAccess:
-        Users:
-          - Arn: !Sub "arn:aws:iam::${AWS::AccountId}:user/${Username}"
-            Username: !Sub "arn:aws:iam::${AWS::AccountId}:user/${Username}"
-            Groups: [ "system:masters" ]
-        Roles:
-          - Arn: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/CS-Okta-Full-Admins-Write"
-            Username: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/CS-Okta-Full-Admins-Write"
-            Groups: [ 'system:masters' ]
-          - Arn: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${BastionRole}"
-            Username: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${BastionRole}"
-            Groups: [ 'system:masters' ]
-          - Arn: !Ref EKSCodeBuildServiceRoleArn
-            Username: EKSCodeDeploy
-            Groups: [ 'system:masters' ]
-          - Arn: !Ref EKSQSExtentionRoleArn
-            Username: EKSK8sExtension
-            Groups: [ 'system:masters' ]
+      # KubernetesApiAccess:
+      #   Users:
+      #     - Arn: !Sub "arn:aws:iam::${AWS::AccountId}:user/${Username}"
+      #       Username: !Sub "arn:aws:iam::${AWS::AccountId}:user/${Username}"
+      #       Groups: [ "system:masters" ]
+      #   Roles:
+      #     - Arn: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/CS-Okta-Full-Admins-Write"
+      #       Username: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/CS-Okta-Full-Admins-Write"
+      #       Groups: [ 'system:masters' ]
+      #     - Arn: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${BastionRole}"
+      #       Username: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${BastionRole}"
+      #       Groups: [ 'system:masters' ]
+      #     - Arn: !Ref EKSCodeBuildServiceRoleArn
+      #       Username: EKSCodeDeploy
+      #       Groups: [ 'system:masters' ]
+      #     # - Arn: !Ref EKSQSExtentionRoleArn
+      #     #   Username: EKSK8sExtension
+      #     #   Groups: [ 'system:masters' ]
 
-  ClusterOIDCProvider:
-    Type: AWS::IAM::OIDCProvider
-    Metadata:
-      cfn-lint:
-        config:
-          ignore_checks:
-            - E3001
-            - E1010
-    Properties:
-      ClientIdList:
-        - sts.amazonaws.com
-      ThumbprintList:
-        - 9e99a48a9960b14926bb7f3b02e22da2b0ab7280
-      Url: !GetAtt Cluster.OIDCIssuerURL
+  # ClusterOIDCProvider:
+  #   Type: AWS::IAM::OIDCProvider
+  #   Metadata:
+  #     cfn-lint:
+  #       config:
+  #         ignore_checks:
+  #           - E3001
+  #           - E1010
+  #   Properties:
+  #     ClientIdList:
+  #       - sts.amazonaws.com
+  #     ThumbprintList:
+  #       - 3D9CA5D4786E49D33396337349BCE49C3F59C6B6
+  #     Url: !GetAtt Cluster.OIDCIssuerURL
 
   ControlPlaneSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -334,7 +334,7 @@ Outputs:
       Name:
         Fn::Sub: "${AWS::StackName}::EKSName"
   OIDCIssuerURLWithoutProtocol:
-    Value: !Join [ '', !Split [ 'https://', !GetAtt Cluster.OIDCIssuerURL ] ]
+    Value: !Join [ '', !Split [ 'https://', !GetAtt Cluster.OpenIdConnectIssuerUrl ] ]
     Export:
       Name:
         Fn::Sub: "${AWS::StackName}::OIDCIssuerURLWithoutProtocol"

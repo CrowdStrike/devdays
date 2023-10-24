@@ -5,30 +5,30 @@ Description: 'Entry Stack for the Dev.Days CNAP Workshop.  Creates an EKS cluste
 
 Parameters:
   # Falcon Keys
-  FalconCID:
-    NoEcho: true
-    Description: 'Customer CID for the Falcon Installation'
-    Type: String
-  CrowdStrikeCloud:
-    Type: String
-    AllowedValues: ['us-1','us-2','eu-1']
-    Default: 'us-1'
-  FalconClientID:
-    NoEcho: true
-    Description: 'Client ID for the Falcon API'
-    Type: String
-  FalconClientSecret:
-    NoEcho: true
-    Description: 'Client Secret for the Falcon API'
-    Type: String
-  DockerAPIToken:
-    NoEcho: true
-    Description: 'Docker API Token to register K8s CLuster in Falcon'
-    Type: String
+  # FalconCID:
+  #   NoEcho: true
+  #   Description: 'Customer CID for the Falcon Installation'
+  #   Type: String
+  # CrowdStrikeCloud:
+  #   Type: String
+  #   AllowedValues: ['us-1','us-2','eu-1']
+  #   Default: 'us-1'
+  # FalconClientID:
+  #   NoEcho: true
+  #   Description: 'Client ID for the Falcon API'
+  #   Type: String
+  # FalconClientSecret:
+  #   NoEcho: true
+  #   Description: 'Client Secret for the Falcon API'
+  #   Type: String
+  # DockerAPIToken:
+  #   NoEcho: true
+  #   Description: 'Docker API Token to register K8s CLuster in Falcon'
+  #   Type: String
   # Environment Vars
   EnvAlias:
     Type: String
-    Default: 'cloud-sec'
+    Default: 'fcs-lab'
   EnvHash:
     Type: String
     Default: ''
@@ -42,22 +42,22 @@ Parameters:
   # PermissionsBoundary:
   #   Type: String
   #   Default: 'BoundaryForAdministratorAccess'
-  KeyPairName:
-    Type: String
-    Default: ''
+  # KeyPairName:
+  #   Type: String
+  #   Default: ''
   # Shared K8S Attributes
   KubernetesVersion:
     Type: String
-    AllowedValues: [ "1.22", "1.23", "1.24", "1.25", "1.26" ]
-    Default: "1.24"
+    AllowedValues: [ "1.24", "1.25", "1.26", "1.27", "1.28" ]
+    Default: "1.27"
     Description: Kubernetes control plane version.
-  # Optional
-  RemoteAccessCIDR:
-    Type: String
-    Default: 1.1.1.1/32
-  AMIReleaseVersion:
-    Type: String
-    Default: "1.24.11-20230411"
+  # # Optional
+  # RemoteAccessCIDR:
+  #   Type: String
+  #   Default: 1.1.1.1/32
+  # AMIReleaseVersion:
+  #   Type: String
+  #   Default: "1.24.11-20230411"
 
 Resources:
 
@@ -82,105 +82,124 @@ Resources:
         # PermissionsBoundary: !Ref PermissionsBoundary
         S3Bucket: !Ref S3Bucket
   
-  EKSControlPlaneStack:
+  # EKSControlPlaneStack:
+  #     Type: AWS::CloudFormation::Stack
+  #     DependsOn: IAMStack
+  #     Properties:
+  #       TemplateURL:  !Sub 'https://${S3Bucket}.s3.amazonaws.com/${S3Prefix}/eksControlPlane.yaml'
+  #       Parameters:
+  #         EnvAlias: !Ref EnvAlias
+  #         EnvHash: !Ref EnvHash
+  #         # PermissionsBoundary: !Ref PermissionsBoundary
+  #         BastionRole: !GetAtt IAMStack.Outputs.BastionHostRole
+  #         VpcId: !GetAtt VPCStack.Outputs.VpcId
+  #         SubnetPrivate1: !GetAtt VPCStack.Outputs.SubnetPrivate1
+  #         SubnetPrivate2: !GetAtt VPCStack.Outputs.SubnetPrivate2
+  #         SubnetPublic1: !GetAtt VPCStack.Outputs.SubnetPublic1
+  #         SubnetPublic2: !GetAtt VPCStack.Outputs.SubnetPublic2
+  #         EKSCodeBuildServiceRoleArn: !GetAtt IAMStack.Outputs.EKSCodeBuildServiceRoleArn
+  #         # EKSQSExtentionRoleArn: !GetAtt IAMStack.Outputs.EKSQSExtentionRoleArn
+  #         KubernetesVersion: !Ref KubernetesVersion
+
+  EKSCodeBuildStack:
       Type: AWS::CloudFormation::Stack
       DependsOn: IAMStack
       Properties:
-        TemplateURL:  !Sub 'https://${S3Bucket}.s3.amazonaws.com/${S3Prefix}/eksControlPlane.yaml'
+        TemplateURL:  !Sub 'https://${S3Bucket}.s3.amazonaws.com/${S3Prefix}/eks-codebuild.yaml'
         Parameters:
           EnvAlias: !Ref EnvAlias
           EnvHash: !Ref EnvHash
           # PermissionsBoundary: !Ref PermissionsBoundary
-          BastionRole: !GetAtt IAMStack.Outputs.BastionHostRole
+          EKSClusterName: !Sub '${EnvAlias}-EKS-Cluster-${EnvHash}'
+          # BastionRole: !GetAtt IAMStack.Outputs.BastionHostRole
           VpcId: !GetAtt VPCStack.Outputs.VpcId
           SubnetPrivate1: !GetAtt VPCStack.Outputs.SubnetPrivate1
           SubnetPrivate2: !GetAtt VPCStack.Outputs.SubnetPrivate2
           SubnetPublic1: !GetAtt VPCStack.Outputs.SubnetPublic1
           SubnetPublic2: !GetAtt VPCStack.Outputs.SubnetPublic2
-          EKSCodeBuildServiceRoleArn: !GetAtt IAMStack.Outputs.EKSCodeBuildServiceRoleArn
-          EKSQSExtentionRoleArn: !GetAtt IAMStack.Outputs.EKSQSExtentionRoleArn
+          # EKSCodeBuildServiceRoleArn: !GetAtt IAMStack.Outputs.EKSCodeBuildServiceRoleArn
+          # EKSQSExtentionRoleArn: !GetAtt IAMStack.Outputs.EKSQSExtentionRoleArn
           KubernetesVersion: !Ref KubernetesVersion
 
-  PodIamRoleStack:
-    Type: AWS::CloudFormation::Stack
-    DependsOn: EKSControlPlaneStack
-    Properties:
-      TemplateURL: !Sub 'https://${S3Bucket}.s3.amazonaws.com/${S3Prefix}/podIamRoles.yaml'
-      Parameters:
-        EnvAlias: !Ref EnvAlias
-        EnvHash: !Ref EnvHash
-        # PermissionsBoundary: !Ref PermissionsBoundary
-        OIDCIssuerURLWithoutProtocol: !GetAtt EKSControlPlaneStack.Outputs.OIDCIssuerURLWithoutProtocol
+  # PodIamRoleStack:
+  #   Type: AWS::CloudFormation::Stack
+  #   DependsOn: EKSControlPlaneStack
+  #   Properties:
+  #     TemplateURL: !Sub 'https://${S3Bucket}.s3.amazonaws.com/${S3Prefix}/podIamRoles.yaml'
+  #     Parameters:
+  #       EnvAlias: !Ref EnvAlias
+  #       EnvHash: !Ref EnvHash
+  #       OIDCIssuerURLWithoutProtocol: !GetAtt EKSControlPlaneStack.Outputs.OIDCIssuerURLWithoutProtocol
+  #       # PermissionsBoundary: !Ref PermissionsBoundary
+  # CodePipelineStack:
+  #   Type: AWS::CloudFormation::Stack
+  #   DependsOn:
+  #     - IAMStack
+  #     - EKSControlPlaneStack
+  #     - PodIamRoleStack
+  #     - WAFRules
+  #   Properties:
+  #     TemplateURL: !Sub 'https://${S3Bucket}.s3.amazonaws.com/${S3Prefix}/codePipeline.yaml'
+  #     Parameters:
+  #       EnvAlias: !Ref EnvAlias
+  #       EnvHash: !Ref EnvHash
+  #       FalconClientID: !Ref FalconClientID
+  #       FalconClientSecret: !Ref FalconClientSecret
+  #       FalconCID: !Ref FalconCID
+  #       CrowdStrikeCloud: !Ref CrowdStrikeCloud
+  #       S3CodeBucketName: !Ref S3Bucket
+  #       S3Prefix: !Ref S3Prefix
+  #       S3CodeBucketKey: code.zip
+  #       EKSCodeBuildServiceRoleArn: !GetAtt IAMStack.Outputs.EKSCodeBuildServiceRoleArn
+  #       EKSClusterName: !GetAtt EKSControlPlaneStack.Outputs.UniqueClusterName
+  #       PodS3AccessRoleArn: !GetAtt PodIamRoleStack.Outputs.PodS3AccessRoleArn
+  #       # PermissionsBoundary: !Ref PermissionsBoundary
+  #       WafRulesARN: !GetAtt WAFRules.Outputs.WebACLARN
 
-  CodePipelineStack:
-    Type: AWS::CloudFormation::Stack
-    DependsOn:
-      - IAMStack
-      - EKSControlPlaneStack
-      - PodIamRoleStack
-      - WAFRules
-    Properties:
-      TemplateURL: !Sub 'https://${S3Bucket}.s3.amazonaws.com/${S3Prefix}/codePipeline.yaml'
-      Parameters:
-        EnvAlias: !Ref EnvAlias
-        EnvHash: !Ref EnvHash
-        FalconClientID: !Ref FalconClientID
-        FalconClientSecret: !Ref FalconClientSecret
-        FalconCID: !Ref FalconCID
-        CrowdStrikeCloud: !Ref CrowdStrikeCloud
-        S3CodeBucketName: !Ref S3Bucket
-        S3Prefix: !Ref S3Prefix
-        S3CodeBucketKey: code.zip
-        EKSCodeBuildServiceRoleArn: !GetAtt IAMStack.Outputs.EKSCodeBuildServiceRoleArn
-        EKSClusterName: !GetAtt EKSControlPlaneStack.Outputs.UniqueClusterName
-        PodS3AccessRoleArn: !GetAtt PodIamRoleStack.Outputs.PodS3AccessRoleArn
-        # PermissionsBoundary: !Ref PermissionsBoundary
-        WafRulesARN: !GetAtt WAFRules.Outputs.WebACLARN
+  # EKSNodeGroupStack:
+  #     Type: AWS::CloudFormation::Stack
+  #     DependsOn: EKSControlPlaneStack
+  #     Properties:
+  #       TemplateURL:  !Sub 'https://${S3Bucket}.s3.amazonaws.com/${S3Prefix}/eksNodeGroup.yaml'
+  #       Parameters:
+  #         EnvAlias: !Ref EnvAlias
+  #         EnvHash:  !Ref EnvHash
+  #         # PermissionsBoundary: !Ref PermissionsBoundary
+  #         SubnetPrivate1: !GetAtt VPCStack.Outputs.SubnetPrivate1
+  #         SubnetPrivate2: !GetAtt VPCStack.Outputs.SubnetPrivate2
+  #         EksClusterName: !GetAtt EKSControlPlaneStack.Outputs.UniqueClusterName
+  #         ClusterSecurityGroupId: !GetAtt EKSControlPlaneStack.Outputs.ClusterSecurityGroupId
+  #         # ReleaseVersion: !Ref AMIReleaseVersion
 
-  EKSNodeGroupStack:
-      Type: AWS::CloudFormation::Stack
-      DependsOn: EKSControlPlaneStack
-      Properties:
-        TemplateURL:  !Sub 'https://${S3Bucket}.s3.amazonaws.com/${S3Prefix}/eksNodeGroup.yaml'
-        Parameters:
-          EnvAlias: !Ref EnvAlias
-          EnvHash:  !Ref EnvHash
-          # PermissionsBoundary: !Ref PermissionsBoundary
-          SubnetPrivate1: !GetAtt VPCStack.Outputs.SubnetPrivate1
-          SubnetPrivate2: !GetAtt VPCStack.Outputs.SubnetPrivate2
-          EksClusterName: !GetAtt EKSControlPlaneStack.Outputs.UniqueClusterName
-          ClusterSecurityGroupId: !GetAtt EKSControlPlaneStack.Outputs.ClusterSecurityGroupId
-          ReleaseVersion: !Ref AMIReleaseVersion
+  # LoadBalancerStack:
+  #     Type: AWS::CloudFormation::Stack
+  #     DependsOn: EKSNodeGroupStack
+  #     Properties:
+  #       TemplateURL: !Sub 'https://${S3Bucket}.s3.amazonaws.com/${S3Prefix}/loadBalancer.yaml'
+  #       Parameters:
+  #         EnvAlias: !Ref EnvAlias
+  #         EnvHash:  !Ref EnvHash
+  #         # PermissionsBoundary: !Ref PermissionsBoundary
+  #         VpcId: !GetAtt VPCStack.Outputs.VpcId
+  #         OIDCIssuerURLWithoutProtocol: !GetAtt EKSControlPlaneStack.Outputs.OIDCIssuerURLWithoutProtocol
+  #         EksClusterName: !GetAtt EKSControlPlaneStack.Outputs.UniqueClusterName
 
-  LoadBalancerStack:
-      Type: AWS::CloudFormation::Stack
-      DependsOn: EKSNodeGroupStack
-      Properties:
-        TemplateURL: !Sub 'https://${S3Bucket}.s3.amazonaws.com/${S3Prefix}/loadBalancer.yaml'
-        Parameters:
-          EnvAlias: !Ref EnvAlias
-          EnvHash:  !Ref EnvHash
-          # PermissionsBoundary: !Ref PermissionsBoundary
-          VpcId: !GetAtt VPCStack.Outputs.VpcId
-          OIDCIssuerURLWithoutProtocol: !GetAtt EKSControlPlaneStack.Outputs.OIDCIssuerURLWithoutProtocol
-          EksClusterName: !GetAtt EKSControlPlaneStack.Outputs.UniqueClusterName
-
-  BastionStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub 'https://${S3Bucket}.s3.amazonaws.com/${S3Prefix}/bastion.yaml'
-      Parameters:
-        EnvAlias: !Ref EnvAlias
-        EnvHash:  !Ref EnvHash
-        KeyPairName: !Ref KeyPairName
-        RemoteAccessCIDR: !Ref RemoteAccessCIDR
-        BastionRole: !GetAtt IAMStack.Outputs.BastionHostRole
-        VPCID: !GetAtt VPCStack.Outputs.VpcId
-        S3Bucket: !Ref S3Bucket
-        S3Prefix: !Ref S3Prefix
-        PublicSubnet1ID: !GetAtt VPCStack.Outputs.SubnetPublic1
-        ControlPlaneSecurityGroupId: !GetAtt EKSControlPlaneStack.Outputs.ControlPlaneSecurityGroupId
-        EnvironmentVariables: !Sub "CS_CID=${FalconCID}, DOCKER_API_TOKEN=${DockerAPIToken}, CS_ENV=${CrowdStrikeCloud}, CS_CLIENT_ID=${FalconClientID}, CS_CLIENT_SECRET=${FalconClientSecret}, K8S_CLUSTER_NAME=${EKSControlPlaneStack.Outputs.UniqueClusterName}, K8S_CA_DATA=${EKSControlPlaneStack.Outputs.CAData}, K8S_VERSION=${KubernetesVersion}, K8S_ENDPOINT=${EKSControlPlaneStack.Outputs.EKSEndpoint}"
+  # BastionStack:
+  #   Type: AWS::CloudFormation::Stack
+  #   Properties:
+  #     TemplateURL: !Sub 'https://${S3Bucket}.s3.amazonaws.com/${S3Prefix}/bastion.yaml'
+  #     Parameters:
+  #       EnvAlias: !Ref EnvAlias
+  #       EnvHash:  !Ref EnvHash
+  #       # KeyPairName: !Ref KeyPairName
+  #       # RemoteAccessCIDR: !Ref RemoteAccessCIDR
+  #       BastionRole: !GetAtt IAMStack.Outputs.BastionHostRole
+  #       VPCID: !GetAtt VPCStack.Outputs.VpcId
+  #       S3Bucket: !Ref S3Bucket
+  #       S3Prefix: !Ref S3Prefix
+  #       PublicSubnet1ID: !GetAtt VPCStack.Outputs.SubnetPublic1
+  #       ControlPlaneSecurityGroupId: !GetAtt EKSControlPlaneStack.Outputs.ControlPlaneSecurityGroupId
+  #       # EnvironmentVariables: !Sub "CS_CID=${FalconCID}, DOCKER_API_TOKEN=${DockerAPIToken}, CS_ENV=${CrowdStrikeCloud}, CS_CLIENT_ID=${FalconClientID}, CS_CLIENT_SECRET=${FalconClientSecret}, K8S_CLUSTER_NAME=${EKSControlPlaneStack.Outputs.UniqueClusterName}, K8S_CA_DATA=${EKSControlPlaneStack.Outputs.CAData}, K8S_VERSION=${KubernetesVersion}, K8S_ENDPOINT=${EKSControlPlaneStack.Outputs.EKSEndpoint}"
 
   MetasploitStack:
     Type: AWS::CloudFormation::Stack
@@ -189,16 +208,17 @@ Resources:
       Parameters:
         EnvAlias: !Ref EnvAlias
         EnvHash:  !Ref EnvHash
-        KeyPairName: !Ref KeyPairName
+        # KeyPairName: !Ref KeyPairName
         S3Bucket: !Ref S3Bucket
         S3Prefix: !Ref S3Prefix
         VPCCIDR: !GetAtt VPCStack.Outputs.VpcCIDROut
         PublicSubnetCIDR: !GetAtt VPCStack.Outputs.PublicSubnet1CIDROut
         NATGatewayEIP: !GetAtt VPCStack.Outputs.NATGatewayEIP
-        RemoteAccessCIDR: !Ref RemoteAccessCIDR
+        # RemoteAccessCIDR: !Ref RemoteAccessCIDR
         # PermissionsBoundary: !Ref PermissionsBoundary
 
   ConfidentialBucket:
+
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: !Sub 'https://${S3Bucket}.s3.amazonaws.com/${S3Prefix}/vulBucket.yaml'
@@ -208,67 +228,40 @@ Resources:
         TemplateBucket: !Ref S3Bucket
         S3Prefix: !Ref S3Prefix
         # PermissionsBoundary: !Ref PermissionsBoundary
-  # FigInstall:
-  #   Type: AWS::CloudFormation::Stack
-  #   Properties:
-  #     TemplateURL: !Sub 'https://${S3Bucket}.s3.amazonaws.com/${S3Prefix}/fig.template.yaml'
-  #     Parameters:
-  #       FalconClientId: !Ref FalconClientID
-  #       FalconSecret: !Ref FalconClientSecret
-  #       PermissionsBoundary: !Ref PermissionsBoundary
-  #       VpcId: !GetAtt VPCStack.Outputs.VpcId
-  #       PublicSubnet1: !GetAtt VPCStack.Outputs.SubnetPublic1
-  #       RemoteAccessCIDR: !Ref RemoteAccessCIDR
-  #       S3Bucket: !Ref S3Bucket 
-  #       S3Prefix: !Ref S3Prefix
-  #       KeyPairName: !Ref KeyPairName
 
-  # HorizonSetup:
+
+ # CSPMSetup:
   #   Type: AWS::CloudFormation::Stack
   #   Properties:
-  #     TemplateURL: !Sub 'https://${S3Bucket}.s3.amazonaws.com/${S3Prefix}/horizon.yaml'
+  #     TemplateURL: !Sub 'https://${S3Bucket}.s3.amazonaws.com/${S3Prefix}/cspm.yaml'
   #     Parameters:
-  #       EnvAlias: !Ref EnvAlias
+  #       # EnvAlias: !Ref EnvAlias
   #       EnvHash:  !Ref EnvHash
-  #       S3Bucket: !Ref S3Bucket
-  #       S3Prefix: !Ref S3Prefix
-  #       KeyPairName: !Ref KeyPairName
+  #       # S3Bucket: !Ref S3Bucket
+  #       # S3Prefix: !Ref S3Prefix
+  #       # KeyPairName: !Ref KeyPairName
   #       CSCloud: !Ref CrowdStrikeCloud
-  #       FalconClientId: !Ref FalconClientID
-  #       FalconClientSecret: !Ref FalconClientSecret
-  #       PermissionsBoundary: !Ref PermissionsBoundary
+  #       FalconClientID: !Ref FalconClientID
+  #       FalconSecret: !Ref FalconClientSecret
+  #       # PermissionsBoundary: !Ref PermissionsBoundary
 
-  CSPMSetup:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub 'https://${S3Bucket}.s3.amazonaws.com/${S3Prefix}/cspm.yaml'
-      Parameters:
-        # EnvAlias: !Ref EnvAlias
-        EnvHash:  !Ref EnvHash
-        # S3Bucket: !Ref S3Bucket
-        # S3Prefix: !Ref S3Prefix
-        # KeyPairName: !Ref KeyPairName
-        CSCloud: !Ref CrowdStrikeCloud
-        FalconClientID: !Ref FalconClientID
-        FalconSecret: !Ref FalconClientSecret
-        # PermissionsBoundary: !Ref PermissionsBoundary
-
-  IOAIOMSetup:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub 'https://${S3Bucket}.s3.amazonaws.com/${S3Prefix}/ioa-iom.yaml'
-      Parameters:
-        # EnvAlias: !Ref EnvAlias
-        # EnvHash:  !Ref EnvHash
-        # S3Bucket: !Ref S3Bucket
-        # S3Prefix: !Ref S3Prefix
-        KeyPairName: !Ref KeyPairName
-        # PermissionsBoundary: !Ref PermissionsBoundary
+  # IOAIOMSetup:
+  #   Type: AWS::CloudFormation::Stack
+  #   Properties:
+  #     TemplateURL: !Sub 'https://${S3Bucket}.s3.amazonaws.com/${S3Prefix}/ioa-iom.yaml'
+  #     Parameters:
+  #       # EnvAlias: !Ref EnvAlias
+  #       # EnvHash:  !Ref EnvHash
+  #       # S3Bucket: !Ref S3Bucket
+  #       # S3Prefix: !Ref S3Prefix
+  #       KeyPairName: !Ref KeyPairName
+  #       # PermissionsBoundary: !Ref PermissionsBoundary
 
   SSMConfig:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: !Sub 'https://${S3Bucket}.s3.amazonaws.com/${S3Prefix}/SSMConf.yaml'
+ 
   WAFRules:
     Type: AWS::CloudFormation::Stack
     Properties:

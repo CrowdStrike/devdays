@@ -8,8 +8,7 @@ function setup_environment_variables() {
 function install_kubernetes_client_tools() {
     printf "\nInstall K8s Client Tools"
     mkdir -p /usr/local/bin/
-    # curl --retry 5 -o kubectl https://amazon-eks.s3-us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/linux/amd64/kubectl
-    curl --retry 5 -o kubectl https://s3.us-west-2.amazonaws.com/amazon-eks/1.23.13/2022-10-31/bin/linux/amd64/kubectl
+    curl --retry 5 -o kubectl https://s3.us-west-2.amazonaws.com/amazon-eks/1.27.6/2023-10-17/bin/linux/amd64/kubectl
     chmod +x ./kubectl
     mv ./kubectl /usr/local/bin/
     mkdir -p /root/bin
@@ -20,8 +19,7 @@ function install_kubernetes_client_tools() {
 source <(/usr/local/bin/kubectl completion bash)
 EOF
     chmod +x /etc/profile.d/kubectl.sh
-    curl --retry 5 -o helm.tar.gz https://get.helm.sh/helm-v3.10.3-linux-amd64.tar.gz
-    # curl --retry 5 -o helm.tar.gz https://get.helm.sh/helm-v3.8.2-linux-amd64.tar.gz
+    curl --retry 5 -o helm.tar.gz https://get.helm.sh/helm-v3.12.3-linux-amd64.tar.gz
     tar -xvf helm.tar.gz
     chmod +x ./linux-amd64/helm
     mv ./linux-amd64/helm /usr/local/bin/helm
@@ -87,45 +85,45 @@ EOF
     chmod -R og-rwx /home/ssm-user/.kube
 }
 
-function setup_nodesensor_config(){
-    cat >/tmp/node_sensor.yaml <<EOF
-apiVersion: falcon.crowdstrike.com/v1alpha1
-kind: FalconNodeSensor
-metadata:
-  name: falcon-node-sensor
-spec:
-  falcon_api:
-    client_id: ${CS_CLIENT_ID}
-    client_secret: ${CS_CLIENT_SECRET}
-    cloud_region: autodiscover
-  node: {}
-  falcon:
-    tags: 
-    - DevDays-CNAP
-EOF
-    # To install Node Sensor, run the following command:
-    # kubectl create -f /tmp/node_sensor.yaml
-}
+# function setup_nodesensor_config(){
+#     cat >/tmp/node_sensor.yaml <<EOF
+# apiVersion: falcon.crowdstrike.com/v1alpha1
+# kind: FalconNodeSensor
+# metadata:
+#   name: falcon-node-sensor
+# spec:
+#   falcon_api:
+#     client_id: ${CS_CLIENT_ID}
+#     client_secret: ${CS_CLIENT_SECRET}
+#     cloud_region: autodiscover
+#   node: {}
+#   falcon:
+#     tags: 
+#     - fcs-lab
+# EOF
+#     # To install Node Sensor, run the following command:
+#     # kubectl create -f /tmp/node_sensor.yaml
+# }
 
-function setup_k8s_agent_config(){
-    cat >/tmp/k8s_agent_config.yaml <<EOF
-crowdstrikeConfig:
-  clientID: ${CS_CLIENT_ID}
-  clientSecret: ${CS_CLIENT_SECRET}
-  clusterName: arn:aws:eks:${region}:${accountId}:cluster/${K8S_CLUSTER_NAME}
-  env: ${CS_ENV}
-  cid: ${CS_CID_LOWER}
-  dockerAPIToken: ${DOCKER_API_TOKEN}
-EOF
+# function setup_k8s_agent_config(){
+#     cat >/tmp/k8s_agent_config.yaml <<EOF
+# crowdstrikeConfig:
+#   clientID: ${CS_CLIENT_ID}
+#   clientSecret: ${CS_CLIENT_SECRET}
+#   clusterName: arn:aws:eks:${region}:${accountId}:cluster/${K8S_CLUSTER_NAME}
+#   env: ${CS_ENV}
+#   cid: ${CS_CID_LOWER}
+#   dockerAPIToken: ${DOCKER_API_TOKEN}
+# EOF
     # printf "\nAdd Repo\n"
     # helm repo add kpagent-helm https://registry.crowdstrike.com/kpagent-helm && helm repo update
     # To install Kubernetes Protection Agent, run the following command:
     # helm upgrade --install -f /tmp/k8s_agent_config.yaml --kubeconfig /home/ec2-user/.kube/config --create-namespace -n falcon-kubernetes-protection kpagent kpagent-helm/cs-k8s-protection-agent
-}
+# }
 
 
 setup_environment_variables
 install_kubernetes_client_tools
 setup_kubeconfig
-setup_nodesensor_config
-setup_k8s_agent_config
+# setup_nodesensor_config
+# setup_k8s_agent_config

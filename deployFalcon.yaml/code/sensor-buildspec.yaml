@@ -1,0 +1,13 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Install Dependencies
+      - apt-get update
+      - apt-get install -y ca-certificates
+  build:
+    on-failure: ABORT
+    commands:
+      - echo Running sensor_import.sh
+      - . ./sensor_image_import/sensor_import.sh

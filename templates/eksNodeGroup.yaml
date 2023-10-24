@@ -24,9 +24,9 @@ Parameters:
   ClusterSecurityGroupId:
     Type: String
     Default: ''
-  ReleaseVersion:
-    Type: String
-    Default: ''
+  # ReleaseVersion:
+  #   Type: String
+  #   Default: ''
 
 Mappings:
   ServicePrincipalPartitionMap:
@@ -132,7 +132,7 @@ Resources:
         Fn::GetAtt:
         - NodeInstanceRole
         - Arn
-      ReleaseVersion: !Ref ReleaseVersion
+      # ReleaseVersion: !Ref ReleaseVersion
       NodegroupName: ng-fffe2ff7
       ScalingConfig:
         DesiredSize: 2
